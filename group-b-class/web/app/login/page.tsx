@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
 
@@ -20,6 +20,17 @@ function readRole(...metadataItems: Array<unknown>): string | null {
     }
   }
   return null;
+}
+
+function toFrenchAuthError(message: string): string {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("invalid login credentials")) {
+    return "Email ou mot de passe incorrect.";
+  }
+  if (normalized.includes("email not confirmed")) {
+    return "Cet email n'est pas encore confirmé.";
+  }
+  return "Connexion impossible pour le moment. Réessaie dans quelques instants.";
 }
 
 export default function LoginPage() {
@@ -41,7 +52,7 @@ export default function LoginPage() {
     });
 
     if (signInError) {
-      setError(signInError.message);
+      setError(toFrenchAuthError(signInError.message));
       setLoading(false);
       return;
     }
@@ -59,32 +70,26 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-screen w-full bg-white">
-      {/* PANNEAU GAUCHE : Formulaire Épuré */}
       <div className="flex w-full shrink-0 flex-col items-center justify-center p-8 lg:w-[400px] xl:w-[480px]">
         <div className="flex w-full max-w-[380px] flex-col">
-          
-          {/* Logo (Centré et rapproché du texte) */}
           <div className="mb-4 flex justify-center">
-            <img 
-              src="https://www.hello-mira.com/Logos/hmiraMeta.png" 
-              alt="Hello Mira" 
-              className="h-28 w-auto object-contain sm:h-32"
+            <img
+              src="/Logos/hmiraMeta.png"
+              alt="Hello Mira"
+              className="h-32 w-auto object-contain transition-all duration-300 ease-out md:h-40"
             />
           </div>
 
-          {/* Textes (Centrés) */}
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
               Espace Mentor
             </h1>
             <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-              Connectez-vous pour façonner les parcours de nos apprenants.
+              Connecte-toi pour structurer tes Mira Classes.
             </p>
           </div>
 
-          {/* Formulaire */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            {/* Input E-mail */}
             <div className="space-y-1.5">
               <label htmlFor="email" className="block text-sm font-semibold text-[var(--foreground)]">
                 Adresse email
@@ -93,29 +98,23 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 required
-                placeholder="anna.lopez@mira.com"
+                placeholder="antoine.martin@hackathon.test"
                 className="h-12 w-full rounded-lg border border-gray-200 bg-gray-50 px-4 text-base outline-none transition-all placeholder:text-gray-400 focus:border-[var(--primary)] focus:bg-white focus:ring-2 focus:ring-[var(--primary)]/20"
               />
             </div>
 
-            {/* Input Password */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label htmlFor="password" className="block text-sm font-semibold text-[var(--foreground)]">
-                  Mot de passe
-                </label>
-                <a href="#" className="text-sm font-medium text-[var(--primary)] hover:underline">
-                  Oublié ?
-                </a>
-              </div>
+              <label htmlFor="password" className="block text-sm font-semibold text-[var(--foreground)]">
+                Mot de passe
+              </label>
               <div className="relative">
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(event) => setPassword(event.target.value)}
                   required
                   placeholder="••••••••"
                   className="h-12 w-full rounded-lg border border-gray-200 bg-gray-50 px-4 pr-12 text-base tracking-widest outline-none transition-all placeholder:text-gray-400 placeholder:tracking-normal focus:border-[var(--primary)] focus:bg-white focus:ring-2 focus:ring-[var(--primary)]/20"
@@ -131,18 +130,16 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Error Display */}
             {error && (
-              <div className="rounded-lg border border-red-100 bg-red-50 p-4">
-                <p className="text-sm font-medium text-red-600">{error}</p>
+              <div className="rounded-lg border border-[var(--color-destructive)] bg-[var(--color-card)] p-4">
+                <p className="text-sm font-medium text-[var(--color-destructive)]">{error}</p>
               </div>
             )}
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 flex h-12 w-full cursor-pointer items-center justify-center rounded-lg bg-[var(--primary)] text-[15px] font-bold text-white transition-all hover:bg-opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+              className="mt-2 flex h-12 w-full cursor-pointer items-center justify-center rounded-lg bg-[var(--primary)] text-[15px] font-bold text-[var(--primary-foreground)] transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -151,29 +148,24 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
         </div>
       </div>
 
-      {/* PANNEAU DROIT : Image Immersive */}
-      <div className="relative hidden flex-1 lg:block">
-        {/* L'image de fond */}
+      <aside className="relative hidden flex-1 overflow-hidden lg:block">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop')] bg-cover bg-center">
-          {/* Overlay subtil */}
-          <div className="absolute inset-0 bg-black/30 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+          <div className="absolute inset-0 bg-black/30 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         </div>
 
-        {/* Contenu sur l'image */}
         <div className="absolute bottom-0 left-0 right-0 p-12 xl:p-20">
           <div className="max-w-xl">
             <h2 className="mb-4 font-serif text-3xl font-bold leading-tight text-white xl:text-4xl">
-              "L'écosystème parfait pour transmettre votre savoir aux nomades du monde entier."
+              "L'écosystème parfait pour transmettre ton savoir aux nomades du monde entier."
             </h2>
             <div className="flex items-center gap-4">
               <div className="h-10 w-10 overflow-hidden rounded-full border-2 border-white/20">
-                <img 
-                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=688&auto=format&fit=crop" 
-                  alt="Mentor"
+                <img
+                  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=688&auto=format&fit=crop"
+                  alt="Portrait de Mira Mentor"
                   className="h-full w-full object-cover"
                 />
               </div>
@@ -184,7 +176,7 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
-      </div>
+      </aside>
     </main>
   );
 }

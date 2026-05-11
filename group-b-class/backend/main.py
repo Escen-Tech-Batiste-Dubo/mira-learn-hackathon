@@ -98,6 +98,14 @@ def create_app() -> FastAPI:
             content=fail_response(data={"errors": exc.errors()}, message="Validation error"),
         )
 
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        logger.error("Unhandled exception on %s %s", request.method, request.url.path, exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content=error_response(message="Internal server error"),
+        )
+
     # Routes
     app.include_router(v1_router, prefix="/v1")
 

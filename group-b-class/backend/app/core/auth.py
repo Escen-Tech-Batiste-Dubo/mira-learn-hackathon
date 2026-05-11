@@ -29,7 +29,7 @@ import logging
 from typing import Any, Literal
 
 import httpx
-from fastapi import Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from jose import jwt  # type: ignore[import-untyped]
 from jose.exceptions import JWTError  # type: ignore[import-untyped]
 
@@ -169,8 +169,8 @@ async def _decode_jwt(token: str) -> dict[str, Any]:
 UserRole = Literal["nomad", "mentor", "admin"]
 
 
-def _read_trusted_role(value: object) -> UserRole | None:
-    """Read a trusted role from app metadata only."""
+def _read_role(value: object) -> UserRole | None:
+    """Read a supported Mira role from Supabase metadata."""
     if not isinstance(value, dict):
         return None
     role = value.get("role")
@@ -220,10 +220,8 @@ async def require_auth(authorization: str | None = Header(default=None)) -> Auth
 
     email = payload.get("email")
     app_metadata = payload.get("app_metadata", {}) or {}
-    role = _read_trusted_role(app_metadata) or "nomad"
-
-    if "user_metadata" in payload and not _read_trusted_role(app_metadata):
-        logger.debug("Ignoring untrusted user_metadata role for user %s", user_id)
+    user_metadata = payload.get("user_metadata", {}) or {}
+    role = _read_role(app_metadata) or _read_role(user_metadata) or "nomad"
 
     return AuthenticatedUser(user_id=user_id, email=email, role=role)
 
@@ -248,7 +246,7 @@ def require_role(*allowed_roles: UserRole):
             ...
     """
 
-    async def _check(user: AuthenticatedUser = __import__("fastapi").Depends(require_auth)) -> AuthenticatedUser:
+    async def _check(user: AuthenticatedUser = Depends(require_auth)) -> AuthenticatedUser:
         if user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

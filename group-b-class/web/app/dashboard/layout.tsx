@@ -65,11 +65,10 @@ export default function DashboardLayout({
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--background)]">
         <div className="flex flex-col items-center gap-6">
-          <img 
-            src="https://www.hello-mira.com/Logos/hmiraMeta.png" 
-            alt="Hello Mira" 
-            className="h-20 w-auto animate-pulse object-contain drop-shadow-lg"
-          />
+          <div className="flex animate-pulse items-baseline gap-2">
+            <span className="font-serif text-4xl font-bold text-[var(--foreground)]">Mira</span>
+            <span className="text-sm font-bold tracking-wide text-[var(--primary)]">LEARN</span>
+          </div>
           <p className="animate-pulse text-sm font-medium text-[var(--muted-foreground)]">Chargement de ton espace...</p>
         </div>
       </main>

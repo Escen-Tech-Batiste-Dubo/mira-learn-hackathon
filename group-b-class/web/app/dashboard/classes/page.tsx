@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { BookOpenCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { apiClient, ApiError } from "@/lib/api-client";
+import { supabase } from "@/lib/supabase";
 import type { MiraClass, MiraClassListResponse, MiraClassStatus } from "@/types";
 
 const STATUS_LABELS: Record<MiraClassStatus, string> = {
@@ -25,7 +28,7 @@ const FORMAT_LABELS: Record<MiraClass["format_envisaged"], string> = {
   both: "Hybride",
 };
 
-function getFormatLabel(miraClass: MiraClass) {
+function getFormatLabel(miraClass: MiraClass): string {
   if (miraClass.rythm_pattern === "self_paced") {
     return "Async";
   }
@@ -82,7 +85,9 @@ function ClassCard({ miraClass }: { miraClass: MiraClass }) {
               <span>{miraClass.skills_taught.length} skill(s)</span>
             </div>
           </div>
-          <span className="text-sm font-semibold text-[var(--primary)] transition-transform duration-300 group-hover:translate-x-1">Modules →</span>
+          <span className="text-sm font-semibold text-[var(--primary)] transition-transform duration-300 group-hover:translate-x-1">
+            Modules →
+          </span>
         </div>
       </Link>
     </Card>
@@ -90,50 +95,80 @@ function ClassCard({ miraClass }: { miraClass: MiraClass }) {
 }
 
 export default function DashboardClassesPage() {
+  const router = useRouter();
   const [classes, setClasses] = useState<MiraClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   useEffect(() => {
     let mounted = true;
 
-    apiClient
-      .get<MiraClassListResponse>("/v1/classes/me")
-      .then((payload) => {
+    async function loadClasses() {
+      setLoading(true);
+      try {
+        const payload = await apiClient.get<MiraClassListResponse>("/v1/classes/me");
         if (!mounted) {
           return;
         }
         setClasses(payload.items);
         setError(null);
-      })
-      .catch((err: unknown) => {
+        setErrorStatus(null);
+      } catch (err: unknown) {
         if (!mounted) {
           return;
         }
-        if (err instanceof ApiError) {
+        setClasses([]);
+
+        if (err instanceof ApiError && err.status === 401) {
+          await supabase.auth.signOut();
+          if (mounted) {
+            router.replace("/login");
+          }
+          return;
+        }
+
+        if (err instanceof ApiError && err.status === 403) {
+          setError("Ton compte n'a pas accès à cet espace mentor.");
+          setErrorStatus(err.status);
+        } else if (err instanceof ApiError) {
           setError(err.message);
+          setErrorStatus(err.status);
         } else if (err instanceof Error) {
           setError(err.message);
+          setErrorStatus(null);
         } else {
           setError("On n'a pas réussi à charger tes Mira Classes.");
+          setErrorStatus(null);
         }
-      })
-      .finally(() => {
+      } finally {
         if (mounted) {
           setLoading(false);
         }
-      });
+      }
+    }
+
+    void loadClasses();
 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [reloadNonce, router]);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.replace("/login");
+  }
 
   const subtitle = useMemo(() => {
     if (classes.length === 0) {
       return "Structure tes parcours, puis ouvre des sessions concrètes aux apprenants.";
     }
-    return `${classes.length} Mira Class${classes.length > 1 ? "es" : ""} dans ton backoffice mentor.`;
+    if (classes.length === 1) {
+      return "1 Mira Class dans ton backoffice mentor.";
+    }
+    return `${classes.length} Mira Classes dans ton backoffice mentor.`;
   }, [classes.length]);
 
   return (
@@ -152,20 +187,24 @@ export default function DashboardClassesPage() {
         <Card>
           <h2 className="text-lg font-semibold">Hmm, chargement impossible</h2>
           <p className="mt-2 text-sm text-[var(--muted-foreground)]">{error}</p>
-          <Button className="mt-4" onClick={() => window.location.reload()}>
-            Réessaie
-          </Button>
+          {errorStatus === 403 ? (
+            <Button className="mt-4" onClick={handleSignOut}>
+              Changer de compte
+            </Button>
+          ) : (
+            <Button className="mt-4" onClick={() => setReloadNonce((value) => value + 1)}>
+              Réessaie
+            </Button>
+          )}
         </Card>
       )}
 
       {!loading && !error && classes.length === 0 && (
         <Card className="py-16 text-center">
-          <svg className="mx-auto h-12 w-12 text-[var(--muted-foreground)] opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-          </svg>
+          <BookOpenCheck className="mx-auto h-12 w-12 text-[var(--muted-foreground)] opacity-60" aria-hidden="true" />
           <h2 className="mt-4 text-xl font-semibold">Aucune Mira Class pour l'instant</h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-[var(--muted-foreground)]">
-            Commence par créer une class, puis ajoute tes modules, tes sessions et tes QCM.
+            Dès qu'une class est validée pour ton profil mentor, elle apparaît ici.
           </p>
         </Card>
       )}
