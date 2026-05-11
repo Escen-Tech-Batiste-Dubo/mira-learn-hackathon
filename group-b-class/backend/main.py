@@ -18,6 +18,8 @@ MIGRATION HINT (post-hackathon, backbone Hello Mira) :
         app.include_router(v1_router.router)
 """
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,6 +39,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Application lifecycle hooks."""
+    logger.info("Starting %s (build %s)", settings.SERVICE_NAME, settings.BUILD_SHA)
+    await init_db()
+    try:
+        yield
+    finally:
+        logger.info("Shutting down %s", settings.SERVICE_NAME)
+        await close_db()
+
+
 def create_app() -> FastAPI:
     """Factory FastAPI."""
     app = FastAPI(
@@ -45,6 +59,7 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url=None,
         openapi_url="/openapi.json",
+        lifespan=lifespan,
     )
 
     # CORS (hackathon : permissif, sera restreint en V1 prod via edge-gateway)
@@ -82,17 +97,6 @@ def create_app() -> FastAPI:
             status_code=422,
             content=fail_response(data={"errors": exc.errors()}, message="Validation error"),
         )
-
-    # Lifespan
-    @app.on_event("startup")
-    async def on_startup() -> None:
-        logger.info("Starting %s (build %s)", settings.SERVICE_NAME, settings.BUILD_SHA)
-        await init_db()
-
-    @app.on_event("shutdown")
-    async def on_shutdown() -> None:
-        logger.info("Shutting down %s", settings.SERVICE_NAME)
-        await close_db()
 
     # Routes
     app.include_router(v1_router, prefix="/v1")
