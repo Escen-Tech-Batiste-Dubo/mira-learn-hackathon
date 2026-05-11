@@ -1,0 +1,28 @@
+{
+  "name": "hackathon-template-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.98.0",
+    "clsx": "^2.1.1",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "tailwind-merge": "^3.5.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^22",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "tailwindcss": "^4",
+    "typescript": "^5.4"
+  },
+  "_migration_hint": "Pour la migration vers le backbone Hello Mira, ajouter : @hlmr-travel/sdk-js (remplace lib/api-client.ts), @hlmr-travel/ui-public (remplace components/ui/), next-intl + @hlmr-travel/booking-i18n (i18n EN/ES en plus de FR), Framer Motion, Radix UI selon besoin."
+}

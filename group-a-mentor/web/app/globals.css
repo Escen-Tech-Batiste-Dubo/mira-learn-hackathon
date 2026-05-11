@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/**
+ * Variables CSS — palette Mira officielle.
+ *
+ * Valeurs prises depuis `fronts/book-web/app/globals.css` (qui hérite de
+ * `@hlmr-travel/ui-public/globals.css`). Reproduites en dur ici parce que
+ * les groupes hackathon n'ont pas accès au package privé `@hlmr-travel/ui-public`.
+ *
+ * Aligned with hello-mira.com Design Authority.
+ *
+ * MIGRATION HINT (post-hackathon) :
+ *   Remplacer ce bloc par `@import "@hlmr-travel/ui-public/globals.css";`
+ *   + `@source` ligne pour les composants du design system.
+ */
+@theme inline {
+  --color-background: #efeae5;          /* warmBeige Mira */
+  --color-foreground: #1D1D1B;          /* charcoal Mira */
+  --color-primary: #E6332A;             /* Mira RED — couleur principale brand */
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f3f4f6;
+  --color-secondary-foreground: #1D1D1B;
+  --color-muted: #f3f4f6;
+  --color-muted-foreground: #6b7280;
+  --color-accent: #f3f4f6;
+  --color-accent-foreground: #1D1D1B;
+  --color-card: #ffffff;
+  --color-card-foreground: #1D1D1B;
+  --color-border: #e5e7eb;
+  --color-input: #e5e7eb;
+  --color-ring: #E6332A;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #1D1D1B;
+
+  /* Polices Mira — chargées via next/font/google dans app/layout.tsx */
+  --font-sans: var(--font-manrope, "Manrope"), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-playfair, "Playfair Display"), Georgia, serif;
+}
+
+/* Alias variables raw (pour le CSS qui utilise var(--primary) directement) */
+:root {
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
+  --primary: var(--color-primary);
+  --primary-foreground: var(--color-primary-foreground);
+  --muted: var(--color-muted);
+  --muted-foreground: var(--color-muted-foreground);
+  --border: var(--color-border);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  color-scheme: light;
+}

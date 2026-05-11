@@ -1,0 +1,322 @@
+/* Mira Learn (mobile) — design tokens
+ * Aligned with Hello Mira charter + mobile-specific tokens from prompt.
+ */
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,700;1,500;1,700&display=swap");
+
+:root {
+  /* Mira palette (mobile spec) */
+  --mira-red: #E6332A;
+  --mira-red-hover: #FF4D42;
+  --warm-beige: #EFEAE5;     /* app bg */
+  --beige-deep: #E2DCD3;     /* user bubble, hover */
+  --charcoal: #1D1D1B;
+  --muted: #888888;
+  --muted-soft: #B6B0A6;
+  --rule: #E5E7EB;
+  --card-bg: #FFFFFF;
+  --success: #16A34A;
+  --error: #EF4444;
+  --gold: #D4A853;
+  --sage-soft: #D6E3D0;
+
+  /* mobile typography */
+  --font-sans: "Manrope", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+}
+
+/* every screen wrapper */
+.screen {
+  background: var(--warm-beige);
+  color: var(--charcoal);
+  font-family: var(--font-sans);
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.screen-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 16px;
+}
+
+/* AppBar */
+.appbar {
+  height: 56px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  background: var(--warm-beige);
+}
+.appbar-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.appbar-back {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -8px;
+  border-radius: 8px;
+  color: var(--charcoal);
+}
+.appbar-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--charcoal);
+}
+
+/* bottom nav */
+.bottom-nav {
+  flex: 0 0 auto;
+  height: 64px;
+  background: var(--card-bg);
+  border-top: 1px solid var(--rule);
+  display: flex;
+  padding-bottom: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.bn-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--muted);
+  position: relative;
+  padding-top: 8px;
+}
+.bn-tab .bn-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.bn-tab.active { color: var(--charcoal); }
+.bn-tab.active .bn-icon { color: var(--mira-red); }
+.bn-tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: 6px;
+  width: 4px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--mira-red);
+}
+
+/* Cards */
+.card {
+  background: var(--card-bg);
+  border-radius: 16px;
+  border: 1px solid var(--rule);
+}
+
+/* Buttons */
+.btn {
+  height: 48px;
+  border-radius: 12px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  border: 0;
+  user-select: none;
+}
+.btn-primary { background: var(--mira-red); color: #fff; }
+.btn-primary:disabled { background: var(--muted-soft); color: #fff; opacity: 0.6; }
+.btn-secondary { background: var(--card-bg); color: var(--charcoal); border: 1px solid var(--rule); }
+.btn-ghost { background: transparent; color: var(--charcoal); }
+.btn-destructive-ghost { background: transparent; color: var(--error); }
+.btn-full { width: 100%; }
+
+/* chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--rule);
+  color: var(--charcoal);
+}
+.chip-skill-primary { background: var(--sage-soft); border-color: rgba(0,0,0,0.05); color: #1B4521; }
+.chip-skill { background: #fff; }
+
+/* progress bar */
+.progress {
+  height: 6px;
+  background: rgba(0,0,0,0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress > i {
+  display: block;
+  height: 100%;
+  background: var(--mira-red);
+  border-radius: 999px;
+}
+
+/* eyebrow / caption */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.caption {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* inputs */
+.input {
+  height: 48px;
+  width: 100%;
+  background: var(--card-bg);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 0 16px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--charcoal);
+  letter-spacing: -0.01em;
+  outline: none;
+}
+.input:focus { border-color: var(--mira-red); }
+.input-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 6px;
+  display: block;
+}
+
+/* serif accent */
+.serif { font-family: var(--font-serif); font-weight: 700; letter-spacing: -0.01em; }
+.serif-italic { font-family: var(--font-serif); font-style: italic; font-weight: 500; }
+
+/* avatars - warm gradient (no portraits per spec) */
+.avatar-warm {
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #FFD8B3, #E6857A 50%, #C84A3F 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+.avatar-warm-2 {
+  background: radial-gradient(circle at 30% 30%, #F5E2B8, #D4A853 55%, #8B6B1F 100%);
+}
+
+/* spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 2px solid rgba(230,51,42,0.18);
+  border-top-color: var(--mira-red);
+  animation: spin 0.9s linear infinite;
+}
+
+/* sonar pulse for live dots */
+@keyframes sonar {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+.sonar-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--mira-red);
+}
+.sonar-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--mira-red);
+  animation: sonar 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+/* progress ring helper */
+.ring-wrap {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+.ring-wrap svg { transform: rotate(-90deg); }
+
+/* divider */
+.divider {
+  height: 1px;
+  background: var(--rule);
+  margin: 16px 0;
+}
+
+/* section header */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  margin: 20px 0 12px;
+}
+.section-header h3 {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--charcoal);
+}
+
+/* sage card (used for skill blocks) */
+.sage-card {
+  background: var(--sage-soft);
+  border: 1px solid rgba(27,69,33,0.1);
+  border-radius: 16px;
+}
+
+/* dotted muted soft */
+.empty-muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* visually mute scrollbars inside iOS frame */
+.screen-scroll::-webkit-scrollbar { display: none; }
+.screen-scroll { scrollbar-width: none; }

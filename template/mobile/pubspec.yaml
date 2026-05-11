@@ -1,0 +1,56 @@
+name: mira_learn_mobile_template
+description: Template Flutter pour le hackathon Mira Learn (Groupe D mobile)
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Routing avec auth guard
+  go_router: ^14.2.0
+
+  # Auth Supabase
+  supabase_flutter: ^2.5.6
+
+  # HTTP client pour appeler le backend FastAPI du Groupe D
+  dio: ^5.4.0
+
+  # Models
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.9.0
+
+  # Env via flutter_dotenv (lecture du .env à runtime)
+  flutter_dotenv: ^5.1.0
+
+  # i18n basique
+  intl: ^0.20.2
+
+  # Iconographie (équivalent solar_icons côté mira_chat)
+  flutter_svg: ^2.0.10+1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.11
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+  riverpod_generator: ^2.4.0
+
+flutter:
+  uses-material-design: true
+  # Le .env est embarqué comme asset (pratique courante de flutter_dotenv).
+  # ⚠️ Ne JAMAIS committer un .env de prod — voir .gitignore et .env.example.
+  assets:
+    - .env

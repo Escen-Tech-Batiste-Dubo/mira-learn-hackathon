@@ -1,0 +1,33 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/Generated.xcconfig
+android/.gradle/
+android/local.properties
+android/captures/
+android/app/build/
+
+# Env — le `.env` placeholder est versionné, à remplacer en local.
+# Si l'étudiant le remplit avec ses vraies clés, qu'il fasse `git update-index --skip-worktree .env`
+.env.local
+.env.*.local
+
+# Codegen artifacts (regénérés via build_runner)
+*.g.dart
+*.freezed.dart
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+*.iml

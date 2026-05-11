@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mira Mentors · onboarding (Groupe A)</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23E6332A'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Manrope, sans-serif' font-weight='700' font-size='18' fill='%23fff'%3EM%3C/text%3E%3C/svg%3E" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="components/shared.jsx"></script>
+  <script type="text/babel" src="components/data.jsx"></script>
+  <script type="text/babel" src="components/MentorsDirectory.jsx"></script>
+  <script type="text/babel" src="components/MentorDetail.jsx"></script>
+  <script type="text/babel" src="components/MiraAI.jsx"></script>
+  <script type="text/babel" src="components/MentorsApply.jsx"></script>
+  <script type="text/babel" src="components/MyApplication.jsx"></script>
+  <script type="text/babel" src="components/AdminApplications.jsx"></script>
+  <script type="text/babel" src="components/AdminApplicationDetail.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const ROUTES = [
+      { id: "mentors",      label: "/mentors",                       group: "public" },
+      { id: "mentor:antoine-martin", label: "/mentors/antoine-martin", group: "public" },
+      { id: "apply",        label: "/mentors/apply",                 group: "public" },
+      { id: "my-application", label: "/mentors/my-application",      group: "public" },
+      { id: "applications", label: "/admin/applications",            group: "admin"  },
+      { id: "app:emma-rossi", label: "/admin/applications/emma-rossi", group: "admin" },
+    ];
+
+    function App() {
+      const initial = (typeof window !== "undefined" && window.location.hash.replace("#", "")) || "mentors";
+      const [route, setRoute] = useState(ROUTES.find(r => r.id === initial) ? initial : "mentors");
+
+      const go = (id) => {
+        // any mentor: prefix is treated as the detail screen (only Antoine wired)
+        const target = id.startsWith("mentor:") ? "mentor:antoine-martin"
+                     : id.startsWith("app:") ? "app:emma-rossi"
+                     : id;
+        setRoute(target);
+        try { window.location.hash = target; } catch (_) {}
+        try { window.scrollTo({ top: 0, behavior: "instant" }); } catch (_) { window.scrollTo(0,0); }
+      };
+
+      useEffect(() => {
+        const onHash = () => {
+          const h = window.location.hash.replace("#", "");
+          if (ROUTES.find(r => r.id === h)) setRoute(h);
+        };
+        window.addEventListener("hashchange", onHash);
+        return () => window.removeEventListener("hashchange", onHash);
+      }, []);
+
+      let view;
+      if (route === "mentors") view = <window.MentorsDirectory go={go} />;
+      else if (route.startsWith("mentor:")) view = <window.MentorDetail go={go} />;
+      else if (route === "apply") view = <window.MentorsApply go={go} />;
+      else if (route === "my-application") view = <window.MyApplication go={go} />;
+      else if (route === "applications") view = <window.AdminApplications go={go} />;
+      else if (route.startsWith("app:")) view = <window.AdminApplicationDetail go={go} />;
+      else view = <window.MentorsDirectory go={go} />;
+
+      return (
+        <div data-screen-label={ROUTES.find(r => r.id === route)?.label || route}>
+          {view}
+          <div className="router" role="navigation" aria-label="Prototype routes">
+            <span style={{ padding: "0 10px 0 12px", color: "rgba(255,255,255,0.5)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>Écrans</span>
+            {ROUTES.map(r => (
+              <button
+                key={r.id}
+                onClick={() => go(r.id)}
+                className={route === r.id ? "active" : ""}
+                title={r.label}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

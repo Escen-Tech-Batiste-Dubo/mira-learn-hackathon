@@ -1,0 +1,171 @@
+/* Hello Mira — Colors & Type tokens
+ * Source: Charte Graphique Hello Mira (official brand charter, 16 pages)
+ *         + hello-mira.com Next.js codebase (app/globals.css, app/layout.jsx)
+ *
+ * Typography is Inter (charter spec), served from local variable fonts via fonts.css.
+ * Weights available: 100 (Thin) — 900 (Black), italics included.
+ * Playfair Display italic is used as an optional accent on the live marketing site
+ * ("discover yourself"), kept as secondary web-only display font.
+ */
+
+@import url("./fonts.css");
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap");
+
+:root {
+  /* ---------- CHARTE — 7 COULEURS OFFICIELLES ---------- */
+  --mira-red:       #E6332A;   /* Rouge Mira — primary */
+  --mira-yellow:    #FCEA10;   /* Jaune citron */
+  --mira-green:     #95C11F;   /* Vert */
+  --mira-orange:    #F39200;   /* Orange */
+  --mira-turquoise: #63B1BB;   /* Bleu turquoise */
+  --mira-ink:       #1D1D1B;   /* Bleu nuit (near-black) */
+  --mira-gray:      #C6C6C6;   /* Gris pâle */
+
+  /* ---------- BACK-COMPAT / EXTENSIONS ---------- */
+  --mira-red-hover: #FF4D42;
+  --mira-cream:     #E3DDD7;   /* page bg used on marketing site */
+  --mira-sand:      #EFEAE5;
+  --mira-stone:     #D1C8C0;
+
+  /* Tints of gris pâle */
+  --mira-gray-50:  #F5F5F5;
+  --mira-gray-100: #EDEDED;
+  --mira-gray-200: #E0E0E0;
+  --mira-gray-300: #C6C6C6;    /* charter gris pâle */
+  --mira-gray-400: #9E9E9E;
+  --mira-gray-500: #6B6B6B;
+  --mira-gray-600: #4A4A4A;
+
+  /* ---------- FG / NEUTRALS ----------
+   * Semantic text tokens. Primary text = Bleu nuit.
+   */
+  --fg-1: #1D1D1B;             /* primary text = Bleu nuit */
+  --fg-2: #374151;
+  --fg-3: #6B7280;
+  --fg-4: #9CA3AF;
+  --fg-5: #D1D5DB;
+
+  --bg-0: #E3DDD7;             /* cream page bg */
+  --bg-1: #FFFFFF;
+  --bg-2: #F9FAFB;
+  --bg-3: #F3F4F6;
+  --bg-invert: #1D1D1B;
+
+  --border-1: #E5E7EB;
+  --border-2: #F3F4F6;
+  --border-glass: rgba(255,255,255,0.6);
+
+  /* ---------- SEMANTIC ---------- */
+  --color-success: #95C11F;    /* Vert Mira */
+  --color-warning: #F39200;    /* Orange Mira */
+  --color-danger:  #E6332A;    /* Rouge Mira */
+  --color-info:    #63B1BB;    /* Bleu turquoise Mira */
+
+  /* ---------- TYPOGRAPHY — INTER (charter) ---------- */
+  --font-sans:  "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+
+  /* Charter weights: Thin (100), Light (300), SemiBold (600), Black (900).
+   * Baseline "Travel the world, discover yourself" is Inter Light. */
+  --fw-thin:     100;
+  --fw-light:    300;
+  --fw-regular:  400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-black:    900;
+
+  /* Display scale */
+  --text-display-xl: clamp(3rem, 8vw, 6rem);
+  --text-display-lg: clamp(2.25rem, 5vw, 3.75rem);
+  --text-display-md: 2.25rem;
+  --text-h3: 1.5rem;
+  --text-h4: 1.25rem;
+  --text-body-lg: 1.125rem;
+  --text-body:    1rem;
+  --text-body-sm: 0.875rem;
+  --text-xs:      0.75rem;
+
+  --tracking-eyebrow: 0.08em;
+  --tracking-tight:  -0.02em;
+  --leading-display: 0.95;
+  --leading-tight:   1.1;
+  --leading-body:    1.6;
+
+  /* ---------- RADIUS / ELEVATION ---------- */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-full: 9999px;
+
+  --shadow-sm:  0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.06);
+  --shadow-lg:  0 10px 30px rgba(0,0,0,0.08);
+  --shadow-xl:  0 20px 50px rgba(0,0,0,0.12);
+  --shadow-btn: 0 8px 24px rgba(0,0,0,0.10);
+
+  /* ---------- MOTION ---------- */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 150ms;
+  --dur-base: 300ms;
+  --dur-slow: 600ms;
+}
+
+/* ---------- SEMANTIC ELEMENT DEFAULTS ---------- */
+html, body {
+  background: var(--bg-0);
+  color: var(--fg-1);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: var(--fw-regular);
+  line-height: var(--leading-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, .h1 {
+  font-family: var(--font-sans);
+  font-size: var(--text-display-xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-display);
+  color: var(--fg-1);
+}
+h2, .h2 {
+  font-family: var(--font-sans);
+  font-size: var(--text-display-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-display);
+  color: var(--fg-1);
+}
+h3, .h3 { font-size: var(--text-h3); font-weight: var(--fw-semibold); letter-spacing: -0.01em; }
+h4, .h4 { font-size: var(--text-h4); font-weight: var(--fw-semibold); }
+
+/* Baseline & accent — Inter Light for charter-spec baseline,
+ * Playfair italic for marketing-site "discover yourself" accent. */
+.baseline {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-light);
+}
+.serif-italic {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 500;
+}
+
+p { color: var(--fg-3); line-height: var(--leading-body); }
+.lead { font-size: var(--text-body-lg); color: var(--fg-3); }
+.eyebrow {
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+.caption { font-size: var(--text-body-sm); color: var(--fg-4); }
+code, .mono {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}

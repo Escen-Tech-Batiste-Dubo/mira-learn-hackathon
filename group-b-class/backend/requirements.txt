@@ -1,0 +1,21 @@
+# Production dependencies
+# Lock approximatif — adapter selon stack final.
+#
+# MIGRATION HINT (post-hackathon) :
+#   Ajouter `ms-common-api @ git+ssh://...` qui remplace beaucoup de boilerplate.
+#   Voir backbone/ms-template-api/requirements.txt pour référence.
+
+# Web framework
+fastapi>=0.110.0,<1.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0,<3.0
+pydantic-settings>=2.1.0
+
+# Database
+sqlalchemy[asyncio]>=2.0.25,<3.0
+asyncpg>=0.29.0
+alembic>=1.13.0
+
+# Auth (Supabase JWT JWKS)
+python-jose[cryptography]>=3.3.0
+httpx>=0.26.0

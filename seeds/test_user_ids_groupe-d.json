@@ -1,0 +1,134 @@
+[
+  {
+    "email": "antoine.martin@hackathon.test",
+    "id": "88239d21-122a-456d-84f0-41a5ebb37cba",
+    "role": "mentor",
+    "display_name": "Antoine Martin"
+  },
+  {
+    "email": "marie.dupont@hackathon.test",
+    "id": "85952231-0402-44d5-bc32-60d22008dd94",
+    "role": "mentor",
+    "display_name": "Marie Dupont"
+  },
+  {
+    "email": "david.cohen@hackathon.test",
+    "id": "bfcad66c-56ea-4141-86b7-f37ae3368077",
+    "role": "mentor",
+    "display_name": "David Cohen"
+  },
+  {
+    "email": "sophie.bernard@hackathon.test",
+    "id": "9d6cf104-ab90-42fe-892a-11362ff78447",
+    "role": "mentor",
+    "display_name": "Sophie Bernard"
+  },
+  {
+    "email": "lucas.garcia@hackathon.test",
+    "id": "cdf87302-906b-47e2-a340-951e760cc3f4",
+    "role": "mentor",
+    "display_name": "Lucas Garcia"
+  },
+  {
+    "email": "emma.rossi@hackathon.test",
+    "id": "c66ea55f-c06b-448c-83ec-4371dd75fd3f",
+    "role": "mentor",
+    "display_name": "Emma Rossi"
+  },
+  {
+    "email": "nathan.kim@hackathon.test",
+    "id": "9d7edf41-06fc-4622-8996-ac8875da0a1d",
+    "role": "mentor",
+    "display_name": "Nathan Kim"
+  },
+  {
+    "email": "chloe.dubois@hackathon.test",
+    "id": "d7a90287-c8a6-45fc-8147-897a0f896174",
+    "role": "mentor",
+    "display_name": "Chloé Dubois"
+  },
+  {
+    "email": "paul.weiss@hackathon.test",
+    "id": "d57e724b-6c07-4e7f-9d74-7908abb2b524",
+    "role": "mentor",
+    "display_name": "Paul Weiss"
+  },
+  {
+    "email": "anna.lopez@hackathon.test",
+    "id": "33e25231-0fb2-4c35-82f4-2169dc769d4d",
+    "role": "nomad",
+    "display_name": "Anna Lopez"
+  },
+  {
+    "email": "marco.silva@hackathon.test",
+    "id": "0cabdffc-1abc-4112-bef3-073e8d91f5c9",
+    "role": "nomad",
+    "display_name": "Marco Silva"
+  },
+  {
+    "email": "lea.bauer@hackathon.test",
+    "id": "69fa6bc8-7fbd-43e6-b6fa-aff8c32449eb",
+    "role": "nomad",
+    "display_name": "Léa Bauer"
+  },
+  {
+    "email": "julien.morel@hackathon.test",
+    "id": "5d3e044f-ed59-4e2a-8fdb-d3953fd8b0f6",
+    "role": "nomad",
+    "display_name": "Julien Morel"
+  },
+  {
+    "email": "nora.ahmed@hackathon.test",
+    "id": "75a50650-5695-4702-a095-02a2da6a7c27",
+    "role": "nomad",
+    "display_name": "Nora Ahmed"
+  },
+  {
+    "email": "pierre.lambert@hackathon.test",
+    "id": "bf0806d6-2b94-425c-966f-8b1ded46b940",
+    "role": "nomad",
+    "display_name": "Pierre Lambert"
+  },
+  {
+    "email": "clara.kovac@hackathon.test",
+    "id": "6ffa01e4-0408-4133-a9a4-69032adeb428",
+    "role": "nomad",
+    "display_name": "Clara Kovač"
+  },
+  {
+    "email": "tom.evans@hackathon.test",
+    "id": "a291e026-6c20-4a49-b032-d38eadd6fa06",
+    "role": "nomad",
+    "display_name": "Tom Evans"
+  },
+  {
+    "email": "eva.fischer@hackathon.test",
+    "id": "4a244934-9147-429a-a070-dfa4fcb3f09c",
+    "role": "nomad",
+    "display_name": "Eva Fischer"
+  },
+  {
+    "email": "samuel.nguyen@hackathon.test",
+    "id": "c2efb459-359e-45fa-8b7f-d44e57c72133",
+    "role": "nomad",
+    "display_name": "Samuel Nguyen"
+  },
+  {
+    "email": "admin@hackathon.test",
+    "id": "317fe2ea-40dc-46d1-9350-dea0785a252f",
+    "role": "admin",
+    "display_name": "Admin HLMR"
+  },
+  {
+    "email": "reviewer@hackathon.test",
+    "id": "d611f887-f866-4698-8cf7-e0452d93e829",
+    "role": "admin",
+    "display_name": "Reviewer Mira"
+  },
+  {
+    "email": "cedric@hackathon.test",
+    "id": "294df548-f752-4e64-ad44-4770b6c0785a",
+    "role": "admin",
+    "display_name": "Cédric Tumminello"
+  }
+]
