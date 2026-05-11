@@ -19,17 +19,21 @@ MIGRATION HINT (post-hackathon) :
 
     Voir `MIGRATION_GUIDE.md` section "Configuration → BaseMicroservice".
 """
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Répertoire `backend/` (indépendant du cwd au lancement d’uvicorn / IDE).
+_BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
     """Configuration de l'application."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_BACKEND_ROOT / ".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",
@@ -70,10 +74,16 @@ class Settings(BaseSettings):
 
     def supabase_jwks_url(self) -> str:
         """Construit l'URL JWKS Supabase si pas fournie explicitement."""
-        if self.SUPABASE_JWKS_URL:
-            return self.SUPABASE_JWKS_URL
-        # Pattern Supabase standard : {SUPABASE_URL}/auth/v1/jwks
-        return f"{self.SUPABASE_URL.rstrip('/')}/auth/v1/jwks"
+        raw = (self.SUPABASE_JWKS_URL or "").strip()
+        # WHY : chemin historique `/auth/v1/jwks` → 404 sur les projets récents ; la vérité est
+        # `/.well-known/jwks.json`. On normalise aussi une URL fournie par variable d’environnement.
+        if raw:
+            u = raw.rstrip("/")
+            if u.endswith("/jwks"):
+                return f"{u.removesuffix('/jwks')}/.well-known/jwks.json"
+            return raw
+        base = self.SUPABASE_URL.rstrip("/")
+        return f"{base}/auth/v1/.well-known/jwks.json"
 
 
 settings = Settings()  # type: ignore[call-arg]
