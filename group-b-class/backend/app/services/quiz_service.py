@@ -160,7 +160,13 @@ async def generate_quiz_for_module(
     mentor_user_id: str,
     body: MiraClassModuleQuizGenerateRequest,
 ) -> QuizDetailRead:
+    logger.info(
+        "[quiz-gen] 2/service debut module_id=%s mentor=%s…",
+        module_id,
+        (mentor_user_id or "")[:8],
+    )
     module, mclass = await _get_module_owned_by_mentor(db, module_id, mentor_user_id)
+    logger.info("[quiz-gen] 3/service module+class OK class_id=%s", mclass.id)
 
     q_stmt = select(MiraClassModuleQuiz).where(
         MiraClassModuleQuiz.module_id == module.id,
@@ -175,6 +181,11 @@ async def generate_quiz_for_module(
             "Un quiz archivé existe pour ce module ; création d’un nouveau brouillon non gérée ici.",
         )
 
+    if existing:
+        logger.info("[quiz-gen] 4/service quiz existant status=%s id=%s", existing.status, existing.id)
+    else:
+        logger.info("[quiz-gen] 4/service aucun quiz existant pour ce module (creation)")
+
     prompt = _build_llm_prompt(module, mclass, body)
     prompt_hash = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:64]
 
@@ -182,11 +193,13 @@ async def generate_quiz_for_module(
         {"role": "system", "content": "Tu réponds uniquement en JSON valide respectant le schéma demandé."},
         {"role": "user", "content": prompt},
     ]
+    logger.info("[quiz-gen] 5/service avant OpenRouter complete()")
     raw = await llm_client.complete(
         messages=messages,
         temperature=0.4,
         response_format={"type": "json_object"},
     )
+    logger.info("[quiz-gen] 6/service apres OpenRouter usage=%s", raw.get("usage"))
     content = (raw.get("content") or "").strip()
     try:
         parsed = json.loads(content)
@@ -194,10 +207,14 @@ async def generate_quiz_for_module(
         logger.warning("Quiz IA : JSON invalide — %s", content[:500])
         raise ValidationError("Réponse LLM non JSON valide.", field="llm_output") from exc
 
+    logger.info("[quiz-gen] 6b/service JSON parse OK keys=%s", list(parsed.keys()) if isinstance(parsed, dict) else type(parsed))
+
     try:
         payload = _LLMQuizPayloadIn.model_validate(parsed)
     except Exception as exc:
         raise ValidationError("Structure JSON LLM invalide.", field="llm_payload") from exc
+
+    logger.info("[quiz-gen] 7/service payload Pydantic OK nb_questions=%s", len(payload.questions))
 
     if len(payload.questions) != body.question_count:
         raise ValidationError(
@@ -217,6 +234,8 @@ async def generate_quiz_for_module(
                 f"Question {i} : au moins 4 options requises.",
                 field=f"questions[{i}].options",
             )
+
+    logger.info("[quiz-gen] 8/service validations options OK, ecriture DB")
 
     if existing:
         await db.execute(
@@ -271,6 +290,7 @@ async def generate_quiz_for_module(
             )
 
     await db.flush()
+    logger.info("[quiz-gen] 8b/service flush questions/options OK quiz_id=%s", quiz.id)
     return await _load_quiz_detail(db, quiz.id)
 
 
