@@ -22,6 +22,7 @@ from app.schemas.quiz import (
     MiraClassModuleQuizRead,
     QuizDetailRead,
     QuizOptionRead,
+    QuizQuestionMentorPatch,
     QuizQuestionRead,
     _LLMQuizPayloadIn,
 )
@@ -48,6 +49,29 @@ async def _get_module_owned_by_mentor(
     if not row:
         raise NotFoundError(resource="MiraClassModule", identifier=module_id)
     return row[0], row[1]
+
+
+async def _get_quiz_owned_by_mentor(
+    db: AsyncSession,
+    quiz_id: str,
+    mentor_user_id: str,
+) -> MiraClassModuleQuiz:
+    stmt = (
+        select(MiraClassModuleQuiz)
+        .join(MiraClassModule, MiraClassModuleQuiz.module_id == MiraClassModule.id)
+        .join(MiraClass, MiraClassModule.class_id == MiraClass.id)
+        .where(
+            MiraClassModuleQuiz.id == quiz_id,
+            MiraClassModuleQuiz.deleted_at.is_(None),
+            MiraClassModule.deleted_at.is_(None),
+            MiraClass.deleted_at.is_(None),
+            MiraClass.mentor_user_id == mentor_user_id,
+        )
+    )
+    quiz = (await db.execute(stmt)).scalar_one_or_none()
+    if not quiz:
+        raise NotFoundError(resource="MiraClassModuleQuiz", identifier=quiz_id)
+    return quiz
 
 
 async def _load_quiz_detail(db: AsyncSession, quiz_id: str) -> QuizDetailRead:
@@ -245,6 +269,89 @@ async def generate_quiz_for_module(
                     explanation=None,
                 ),
             )
+
+    await db.flush()
+    return await _load_quiz_detail(db, quiz.id)
+
+
+def _validate_correct_options(question_type: str, correct_count: int) -> None:
+    if question_type == "single_choice" and correct_count != 1:
+        raise ValidationError(
+            f"Type single_choice : exactement une option correcte requise (actuellement {correct_count}).",
+            field="options",
+        )
+    if question_type == "multi_choice" and correct_count < 1:
+        raise ValidationError(
+            "Type multi_choice : au moins une option correcte requise.",
+            field="options",
+        )
+
+
+async def update_quiz_question(
+    db: AsyncSession,
+    quiz_id: str,
+    question_id: str,
+    mentor_user_id: str,
+    body: QuizQuestionMentorPatch,
+) -> QuizDetailRead:
+    payload = body.model_dump(exclude_unset=True)
+    if not payload:
+        raise ValidationError("Aucun champ à mettre à jour.", field="body")
+
+    quiz = await _get_quiz_owned_by_mentor(db, quiz_id, mentor_user_id)
+    if quiz.status != "draft":
+        raise ConflictError("Seuls les quizzes en brouillon peuvent être modifiés.")
+
+    q_stmt = select(MiraClassModuleQuizQuestion).where(
+        MiraClassModuleQuizQuestion.id == question_id,
+        MiraClassModuleQuizQuestion.quiz_id == quiz_id,
+    )
+    question = (await db.execute(q_stmt)).scalar_one_or_none()
+    if not question:
+        raise NotFoundError(resource="MiraClassModuleQuizQuestion", identifier=question_id)
+
+    if "prompt" in payload:
+        p = payload["prompt"]
+        if p is None or (isinstance(p, str) and not p.strip()):
+            raise ValidationError("Le prompt ne peut pas être vide.", field="prompt")
+        question.prompt = p
+
+    if "explanation" in payload:
+        ex = payload["explanation"]
+        question.explanation = None if ex is None or (isinstance(ex, str) and ex == "") else ex
+
+    if "points" in payload and payload["points"] is not None:
+        question.points = payload["points"]
+
+    if "options" in payload and body.options is not None:
+        opt_rows = (
+            (
+                await db.execute(
+                    select(MiraClassModuleQuizOption).where(
+                        MiraClassModuleQuizOption.question_id == question.id,
+                    ),
+                )
+            )
+            .scalars()
+            .all()
+        )
+        by_id = {o.id: o for o in opt_rows}
+        for patch in body.options:
+            oid = patch.id
+            if oid not in by_id:
+                raise ValidationError(
+                    f"L’option {oid} n’appartient pas à cette question.",
+                    field="options",
+                )
+            row = by_id[oid]
+            item = patch.model_dump(exclude_unset=True)
+            if "label" in item:
+                row.label = item["label"]
+            if "is_correct" in item:
+                row.is_correct = bool(item["is_correct"])
+
+        correct_count = sum(1 for o in by_id.values() if o.is_correct)
+        _validate_correct_options(question.type, correct_count)
 
     await db.flush()
     return await _load_quiz_detail(db, quiz.id)

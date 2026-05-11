@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 QuizStatus = Literal["draft", "published", "archived"]
 
@@ -73,3 +73,30 @@ class _LLMQuestionIn(BaseModel):
 
 class _LLMQuizPayloadIn(BaseModel):
     questions: list[_LLMQuestionIn] = Field(..., min_length=1, max_length=15)
+
+
+class QuizOptionPatchItem(BaseModel):
+    """Mise à jour partielle d’une option existante (PATCH question)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    label: str | None = Field(default=None, min_length=1, max_length=4000)
+    is_correct: bool | None = None
+
+    @model_validator(mode="after")
+    def at_least_one_field(self) -> QuizOptionPatchItem:
+        if self.label is None and self.is_correct is None:
+            raise ValueError("Chaque option doit inclure au moins `label` ou `is_correct`.")
+        return self
+
+
+class QuizQuestionMentorPatch(BaseModel):
+    """Corps PATCH mentor — champs optionnels ; au moins un doit être présent (hors JSON vide)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prompt: str | None = Field(default=None, min_length=1, max_length=10000)
+    explanation: str | None = Field(default=None, max_length=5000)
+    points: int | None = Field(default=None, ge=1, le=100)
+    options: list[QuizOptionPatchItem] | None = Field(default=None, min_length=1, max_length=24)
