@@ -199,7 +199,7 @@ async def generate_quiz_for_module(
             delete(MiraClassModuleQuizQuestion).where(MiraClassModuleQuizQuestion.quiz_id == existing.id),
         )
         quiz = existing
-        quiz.title = f"QCM — {module.title}"[:200]
+        quiz.title = f"QCM - {module.title}"[:200]
         quiz.description = "Généré par IA — à relire avant publication."
         quiz.ai_generated = True
         quiz.ai_generation_prompt_hash = prompt_hash
@@ -207,7 +207,7 @@ async def generate_quiz_for_module(
     else:
         quiz = MiraClassModuleQuiz(
             module_id=module.id,
-            title=f"QCM — {module.title}"[:200],
+            title=f"QCM - {module.title}"[:200],
             description="Généré par IA — à relire avant publication.",
             pass_threshold_pct=70,
             time_limit_seconds=None,
