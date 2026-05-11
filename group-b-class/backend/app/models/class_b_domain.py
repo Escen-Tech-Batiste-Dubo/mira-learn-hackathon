@@ -12,13 +12,13 @@ from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Numer
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base, IDMixin, SoftDeleteMixin, TimestampMixin
+from app.models.base import Base, IDMixin, PgUuidStr, SoftDeleteMixin, TimestampMixin
 
 
 class MiraClass(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "mira_class"
 
-    mentor_user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    mentor_user_id: Mapped[str] = mapped_column(PgUuidStr, nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
 
@@ -26,7 +26,7 @@ class MiraClass(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
 class MiraClassModule(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "mira_class_module"
 
-    class_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    class_id: Mapped[str] = mapped_column(PgUuidStr, nullable=False, index=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
@@ -37,7 +37,7 @@ class MiraClassModule(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
 class MiraClassModuleQuiz(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "mira_class_module_quiz"
 
-    module_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    module_id: Mapped[str] = mapped_column(PgUuidStr, nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
     pass_threshold_pct: Mapped[int] = mapped_column(Integer, nullable=False, server_default="70")
@@ -55,7 +55,7 @@ class MiraClassModuleQuizQuestion(Base, IDMixin):
     __tablename__ = "mira_class_module_quiz_question"
 
     quiz_id: Mapped[str] = mapped_column(
-        String(36),
+        PgUuidStr,
         ForeignKey("mira_class_module_quiz.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -75,7 +75,7 @@ class MiraClassModuleQuizOption(Base, IDMixin):
     __tablename__ = "mira_class_module_quiz_option"
 
     question_id: Mapped[str] = mapped_column(
-        String(36),
+        PgUuidStr,
         ForeignKey("mira_class_module_quiz_question.id", ondelete="CASCADE"),
         nullable=False,
     )
