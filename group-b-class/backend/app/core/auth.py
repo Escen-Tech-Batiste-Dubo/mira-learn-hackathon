@@ -51,15 +51,21 @@ async def _fetch_jwks() -> dict[str, Any]:
         return _jwks_cache
 
     url = settings.supabase_jwks_url()
+    # WHY : le gateway Supabase exige l’en-tête `apikey` (clé anon) sur /auth/v1/* ;
+    # sans lui, JWKS répond 401 et on mappe à tort un 503 « Auth unavailable ».
+    headers = {
+        "apikey": settings.SUPABASE_ANON_KEY,
+        "Authorization": f"Bearer {settings.SUPABASE_ANON_KEY}",
+    }
     async with httpx.AsyncClient(timeout=5.0) as client:
-        response = await client.get(url)
+        response = await client.get(url, headers=headers)
         response.raise_for_status()
         _jwks_cache = response.json()
         return _jwks_cache
 
 
 async def _decode_jwt(token: str) -> dict[str, Any]:
-    """Décode + valide un JWT Supabase via JWKS RS256."""
+    """Décode + valide un JWT Supabase via JWKS (RS256 ou ES256 selon le projet)."""
     try:
         jwks = await _fetch_jwks()
     except httpx.HTTPError as exc:
@@ -82,7 +88,7 @@ async def _decode_jwt(token: str) -> dict[str, Any]:
         return jwt.decode(
             token,
             key=key,
-            algorithms=["RS256"],
+            algorithms=["RS256", "ES256"],
             audience="authenticated",
             options={"verify_aud": True},
         )
