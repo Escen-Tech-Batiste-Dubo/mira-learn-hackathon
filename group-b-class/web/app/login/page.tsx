@@ -46,7 +46,7 @@ export default function LoginPage() {
       return;
     }
 
-    const role = readRole(data.user?.user_metadata, data.user?.app_metadata);
+    const role = readRole(data.user?.app_metadata, data.user?.user_metadata);
     if (role !== "mentor") {
       await supabase.auth.signOut();
       setError("Ce compte n'est pas un compte Mira Mentor.");

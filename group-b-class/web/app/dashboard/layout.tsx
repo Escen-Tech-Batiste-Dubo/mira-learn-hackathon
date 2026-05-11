@@ -44,7 +44,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading } = useAuth();
-  const metadata = readMetadata(user?.app_metadata, user?.user_metadata);
+  const metadata = readMetadata(user?.user_metadata, user?.app_metadata);
   const displayMetadata = readDisplayMetadata(user?.user_metadata);
   const role = typeof metadata.role === "string" ? metadata.role : null;
   const displayName =

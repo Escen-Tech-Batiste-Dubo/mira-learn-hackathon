@@ -169,6 +169,16 @@ async def _decode_jwt(token: str) -> dict[str, Any]:
 UserRole = Literal["nomad", "mentor", "admin"]
 
 
+def _read_trusted_role(value: object) -> UserRole | None:
+    """Read a trusted role from app metadata only."""
+    if not isinstance(value, dict):
+        return None
+    role = value.get("role")
+    if role in ("nomad", "mentor", "admin"):
+        return role
+    return None
+
+
 class AuthenticatedUser:
     """User authentifié extrait du JWT.
 
@@ -178,10 +188,10 @@ class AuthenticatedUser:
             - tenant_id, is_founder, is_internal, ...
     """
 
-    def __init__(self, user_id: str, email: str | None, role: str) -> None:
+    def __init__(self, user_id: str, email: str | None, role: UserRole) -> None:
         self.user_id = user_id
         self.email = email
-        self.role: UserRole = role  # type: ignore[assignment]
+        self.role = role
 
     def __repr__(self) -> str:
         return f"AuthenticatedUser(user_id={self.user_id!r}, role={self.role!r})"
@@ -209,13 +219,11 @@ async def require_auth(authorization: str | None = Header(default=None)) -> Auth
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token: no sub claim")
 
     email = payload.get("email")
-    user_metadata = payload.get("user_metadata", {}) or {}
     app_metadata = payload.get("app_metadata", {}) or {}
-    role = user_metadata.get("role") or app_metadata.get("role") or "nomad"
+    role = _read_trusted_role(app_metadata) or "nomad"
 
-    if role not in ("nomad", "mentor", "admin"):
-        logger.warning("Unknown role %r in JWT for user %s, defaulting to nomad", role, user_id)
-        role = "nomad"
+    if "user_metadata" in payload and not _read_trusted_role(app_metadata):
+        logger.debug("Ignoring untrusted user_metadata role for user %s", user_id)
 
     return AuthenticatedUser(user_id=user_id, email=email, role=role)
 
