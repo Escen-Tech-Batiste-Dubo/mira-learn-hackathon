@@ -91,4 +91,4 @@ cd ../web && npm install && npm run dev
 
 ## Mentor HLMR référent
 
-**Cédric (@FourmiCrobe)** — produit / IA, Slack `#hackathon-mira-learn-c`.
+**mentor HLMR** — produit / IA, Slack `#hackathon-mira-learn-c`.

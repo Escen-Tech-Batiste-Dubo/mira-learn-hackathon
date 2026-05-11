@@ -13,7 +13,7 @@ cp .env.example .env
 # 2. Renseigner les valeurs dans .env :
 #    - DATABASE_URL (Supabase ou Postgres local)
 #    - SUPABASE_URL, SUPABASE_ANON_KEY
-#    - OPENROUTER_API_KEY (fourni par Lorenzo)
+#    - OPENROUTER_API_KEY (fourni par ton encadrant Hello Mira)
 
 # 3. Installer les dépendances
 make install

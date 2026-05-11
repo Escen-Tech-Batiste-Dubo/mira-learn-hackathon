@@ -196,10 +196,10 @@ Personas qui reviennent souvent dans les démos :
 
 | Groupe | Mentor référent | Slack |
 |---|---|---|
-| A | Lorenzo (@lozoclt) | `#hackathon-mira-learn-a` |
-| B | Louis (@lougail) | `#hackathon-mira-learn-b` |
-| C | Cédric (@FourmiCrobe) | `#hackathon-mira-learn-c` |
-| D | Lorenzo (@lozoclt) | `#hackathon-mira-learn-d` |
+| A | mentor HLMR | `#hackathon-mira-learn-a` |
+| B | mentor HLMR | `#hackathon-mira-learn-b` |
+| C | mentor HLMR | `#hackathon-mira-learn-c` |
+| D | mentor HLMR | `#hackathon-mira-learn-d` |
 
 ---
 
@@ -215,6 +215,6 @@ cd backend && alembic upgrade head    # ré-applique 0001 + 0002
 
 ---
 
-> Question avant chaque commit : *"Si Lorenzo reprend ma PR lundi matin, est-ce qu'il comprend tout en 5 min ?"*
+> Question avant chaque commit : *"Si un encadrant Hello Mira reprend ma PR lundi matin, est-ce qu'il comprend tout en 5 min ?"*
 
 Bonne chance — et amusez-vous 🚀

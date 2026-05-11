@@ -12,7 +12,7 @@ cp .env.example .env.local
 
 # 2. Renseigner :
 #    - NEXT_PUBLIC_API_URL (URL du backend FastAPI du groupe, par défaut http://localhost:8000)
-#    - NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY (fournis par Lorenzo)
+#    - NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY (fournis par ton encadrant Hello Mira)
 
 # 3. Installer les dépendances
 make install

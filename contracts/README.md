@@ -254,4 +254,4 @@ C'est **assumé** : l'objectif du hackathon est de livrer 4 codebases reprenable
 
 ## Validation finale
 
-Tous les fichiers de contrat doivent être lus + validés par Lorenzo (CTO) **avant J0** pour garantir l'alignement backbone Hello Mira. Toute déviation requiert update explicite ici.
+Tous les fichiers de contrat doivent être lus + validés par le CTO Hello Mira **avant J0** pour garantir l'alignement backbone Hello Mira. Toute déviation requiert update explicite ici.

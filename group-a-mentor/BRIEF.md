@@ -73,7 +73,7 @@ Le tunnel est conçu pour qu'un candidat sérieux le complète en **10-15 minute
 
 ### Organisationnelles
 
-- 5-6 étudiants, 3 jours, mentor HLMR dédié (Lorenzo)
+- 5-6 étudiants, 3 jours, encadrant Hello Mira dédié
 - Pas de modif cross-groupe ; vos changements de schéma `mira_class` impactent groupes B, C, D — coordonnez J1
 
 ### Sécurité
@@ -129,4 +129,4 @@ Tous : password `Hackathon2026!`
 
 ## Mentor HLMR référent
 
-**Lorenzo (@lozoclt)** — tech, Slack `#hackathon-mira-learn-a`.
+**mentor HLMR** — tech, Slack `#hackathon-mira-learn-a`.

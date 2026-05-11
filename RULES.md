@@ -35,6 +35,6 @@ Pour partager du code ou aligner un contract : **demande au mentor HLMR**, on fa
 
 ---
 
-> **Question avant d'agir :** "Si Lorenzo / Louis reprend ma PR lundi matin, est-ce qu'il comprend tout en 5 minutes ?"
+> **Question avant d'agir :** "Si un encadrant Hello Mira reprend ma PR lundi matin, est-ce qu'il comprend tout en 5 minutes ?"
 
 Si la réponse est non, applique les 7 règles.

@@ -100,4 +100,4 @@ Login pré-rempli sur le splash : `anna.lopez@hackathon.test` / `Hackathon2026!`
 
 ## Mentor HLMR référent
 
-**Lorenzo (@lozoclt)** — mobile / Flutter, Slack `#hackathon-mira-learn-d`.
+**mentor HLMR** — mobile / Flutter, Slack `#hackathon-mira-learn-d`.

@@ -94,4 +94,4 @@ cd ../web && npm install && npm run dev
 
 ## Mentor HLMR référent
 
-**Louis (@lougail)** — backend / data, Slack `#hackathon-mira-learn-b`.
+**mentor HLMR** — backend / data, Slack `#hackathon-mira-learn-b`.
