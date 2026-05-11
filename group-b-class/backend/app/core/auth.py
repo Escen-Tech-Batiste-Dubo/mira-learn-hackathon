@@ -30,8 +30,8 @@ from typing import Any, Literal
 
 import httpx
 from fastapi import Header, HTTPException, status
-from jose import jwt
-from jose.exceptions import JWTError
+from jose import jwt  # type: ignore[import-untyped]
+from jose.exceptions import JWTError  # type: ignore[import-untyped]
 
 from app.core.config import settings
 
