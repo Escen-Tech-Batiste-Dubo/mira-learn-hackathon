@@ -96,10 +96,9 @@ CREATE TABLE mira_class (
     id UUID NOT NULL DEFAULT uuid_generate_v4() PRIMARY KEY,
 
     -- Liens
-    application_id UUID NULL REFERENCES mentor_application(id) ON DELETE SET NULL,
-        -- Conserve la trace de la candidature d'origine après validation.
-        -- Devient NULL uniquement si la candidature est supprimée pour RGPD
-        -- (le ON DELETE SET NULL protège la mira_class qui survit).
+    application_id UUID NULL,
+        -- Conserve la trace logique de la candidature d'origine après validation.
+        -- Référence cross-groupe non enforced côté Groupe B.
     mentor_user_id UUID NOT NULL,
         -- ref Supabase auth.users.id du mentor — ne change jamais après création
         -- (= mentor_profile.user_id, pas mentor_profile.id)
@@ -165,7 +164,7 @@ CREATE INDEX idx_mira_class_published ON mira_class (status, published_at DESC)
 
 CREATE TABLE mira_class_enrolment (
     id UUID NOT NULL DEFAULT uuid_generate_v4() PRIMARY KEY,
-    session_id UUID NOT NULL REFERENCES mira_class_session(id) ON DELETE CASCADE,
+    session_id UUID NOT NULL,
     user_id UUID NOT NULL,                                 -- ref Supabase auth.users.id
 
     -- State machine
@@ -194,16 +193,15 @@ CREATE TABLE mira_class_enrolment (
     -- Audit
     enrolled_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-
-    UNIQUE (session_id, user_id) WHERE status NOT IN ('cancelled', 'rejected')
-        -- un user peut se ré-inscrire après cancel/reject
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_mira_class_enrolment_session_id ON mira_class_enrolment (session_id, status);
 CREATE INDEX idx_mira_class_enrolment_user_id ON mira_class_enrolment (user_id, status);
 CREATE INDEX idx_mira_class_enrolment_waitlist ON mira_class_enrolment (session_id, waitlist_position)
     WHERE status = 'waitlist';
+CREATE UNIQUE INDEX uniq_mira_class_enrolment_active_user ON mira_class_enrolment (session_id, user_id)
+    WHERE status NOT IN ('cancelled', 'rejected');
 
 CREATE TABLE mira_class_module (
     id UUID NOT NULL DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -255,17 +253,17 @@ CREATE TABLE mira_class_module_quiz (
 
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    deleted_at TIMESTAMP WITH TIME ZONE NULL,
-
-    UNIQUE (module_id) WHERE deleted_at IS NULL              -- 1 quiz par module max
+    deleted_at TIMESTAMP WITH TIME ZONE NULL
 );
 
 CREATE INDEX idx_mira_class_module_quiz_module_id ON mira_class_module_quiz (module_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_mira_class_module_quiz_status ON mira_class_module_quiz (status) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX uniq_mira_class_module_quiz_active_module ON mira_class_module_quiz (module_id)
+    WHERE deleted_at IS NULL;
 
 CREATE TABLE mira_class_module_quiz_option (
     id UUID NOT NULL DEFAULT uuid_generate_v4() PRIMARY KEY,
-    question_id UUID NOT NULL REFERENCES mira_class_module_quiz_question(id) ON DELETE CASCADE,
+    question_id UUID NOT NULL,
     position INTEGER NOT NULL,                             -- ordre d'affichage
     label TEXT NOT NULL,                                   -- texte de l'option
     is_correct BOOLEAN NOT NULL DEFAULT FALSE,
@@ -293,6 +291,9 @@ CREATE TABLE mira_class_module_quiz_question (
 );
 
 CREATE INDEX idx_quiz_question_quiz_id ON mira_class_module_quiz_question (quiz_id, position);
+ALTER TABLE mira_class_module_quiz_option
+    ADD CONSTRAINT fk_quiz_option_question_id
+    FOREIGN KEY (question_id) REFERENCES mira_class_module_quiz_question(id) ON DELETE CASCADE;
 
 CREATE TABLE mira_class_module_skill (
     id UUID NOT NULL DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -364,6 +365,9 @@ CREATE INDEX idx_mira_class_session_class_id ON mira_class_session (class_id) WH
 CREATE INDEX idx_mira_class_session_status_starts ON mira_class_session (status, starts_at) WHERE deleted_at IS NULL;
 CREATE INDEX idx_mira_class_session_location ON mira_class_session (location_city, location_country) WHERE deleted_at IS NULL;
 CREATE INDEX idx_mira_class_session_promoted ON mira_class_session (is_promoted, starts_at) WHERE is_promoted = TRUE AND deleted_at IS NULL;
+ALTER TABLE mira_class_enrolment
+    ADD CONSTRAINT fk_mira_class_enrolment_session_id
+    FOREIGN KEY (session_id) REFERENCES mira_class_session(id) ON DELETE CASCADE;
 
 CREATE TABLE mira_class_session_module (
     id UUID NOT NULL DEFAULT uuid_generate_v4() PRIMARY KEY,

@@ -45,4 +45,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute('TRUNCATE skill, mentor_profile, mentor_application, mentor_profile_skill, mira_class CASCADE;')
+    op.execute('TRUNCATE skill, mentor_profile, mira_class CASCADE;')
