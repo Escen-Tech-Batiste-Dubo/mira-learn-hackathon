@@ -24,6 +24,7 @@ export type MiraClassStatus =
   | "archived";
 
 export type MiraClassFormat = "physical" | "virtual" | "both";
+export type MiraClassDeliveryFormat = MiraClassFormat | "async";
 
 export interface TargetCity {
   name: string;
@@ -66,4 +67,29 @@ export interface MiraClass {
 export interface MiraClassListResponse {
   items: MiraClass[];
   total: number;
+}
+
+export type SkillCategory = "business" | "design" | "tech" | "soft" | "lifestyle";
+
+export interface Skill {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: SkillCategory;
+  popularity_score: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SkillListResponse {
+  items: Skill[];
+  total: number;
+}
+
+export interface MiraClassCreatePayload {
+  title: string;
+  description: string;
+  skill_ids: string[];
+  delivery_format: MiraClassDeliveryFormat;
 }

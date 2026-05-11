@@ -1,8 +1,9 @@
 """Pydantic schemas for Mira Classes."""
 from datetime import datetime
 from typing import Literal, Optional
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 MiraClassStatus = Literal[
     "draft",
@@ -15,6 +16,7 @@ MiraClassStatus = Literal[
     "archived",
 ]
 ClassFormat = Literal["physical", "virtual", "both"]
+DeliveryFormat = Literal["physical", "virtual", "both", "async"]
 RythmPattern = Literal[
     "weekly_session",
     "biweekly_session",
@@ -27,6 +29,32 @@ RythmPattern = Literal[
 class TargetCity(BaseModel):
     name: str = Field(..., max_length=120)
     country_code: str = Field(..., min_length=2, max_length=2)
+
+
+class MiraClassCreate(BaseModel):
+    title: str = Field(..., min_length=3, max_length=200)
+    description: str = Field(..., min_length=20, max_length=4000)
+    skill_ids: list[UUID] = Field(..., min_length=1, max_length=8)
+    delivery_format: DeliveryFormat
+
+    @field_validator("title", "description")
+    @classmethod
+    def strip_required_text(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("Ce champ est obligatoire.")
+        return stripped
+
+    @field_validator("skill_ids")
+    @classmethod
+    def unique_skill_ids(cls, value: list[UUID]) -> list[UUID]:
+        unique: list[UUID] = []
+        seen: set[UUID] = set()
+        for skill_id in value:
+            if skill_id not in seen:
+                unique.append(skill_id)
+                seen.add(skill_id)
+        return unique
 
 
 class MiraClassRead(BaseModel):

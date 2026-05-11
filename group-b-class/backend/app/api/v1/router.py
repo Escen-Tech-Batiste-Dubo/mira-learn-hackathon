@@ -6,7 +6,7 @@ MIGRATION HINT (post-hackathon) :
 """
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import health, mira_class
+from app.api.v1.endpoints import health, mira_class, skill
 
 router = APIRouter()
 
@@ -15,6 +15,7 @@ router.include_router(health.router, tags=["health"])
 
 # Routes métier (1 inclusion par fichier endpoint)
 router.include_router(mira_class.router, prefix="/classes", tags=["classes"])
+router.include_router(skill.router, prefix="/skills", tags=["skills"])
 
 # Ajouter ici les autres routes au fur et à mesure :
 # router.include_router(mentor.router,     prefix="/mentors", tags=["mentors"])

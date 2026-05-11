@@ -144,6 +144,12 @@ export default function DashboardClassesPage() {
           <h1 className="mt-1 text-3xl font-bold">Mes Mira Classes</h1>
           <p className="mt-2 max-w-2xl text-sm text-[var(--muted-foreground)]">{subtitle}</p>
         </div>
+        <Link
+          href="/dashboard/classes/new"
+          className="inline-flex h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-[var(--primary-foreground)] hover:opacity-90"
+        >
+          Créer une Mira Class
+        </Link>
       </header>
 
       {loading && <ClassesSkeleton />}
@@ -164,6 +170,12 @@ export default function DashboardClassesPage() {
           <p className="mx-auto mt-2 max-w-md text-sm text-[var(--muted-foreground)]">
             Commence par créer une class, puis ajoute tes modules, tes sessions et tes QCM.
           </p>
+          <Link
+            href="/dashboard/classes/new"
+            className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-[var(--primary-foreground)] hover:opacity-90"
+          >
+            Créer une Mira Class
+          </Link>
         </Card>
       )}
 
