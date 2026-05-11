@@ -18,6 +18,7 @@ MIGRATION HINT (post-hackathon, backbone Hello Mira) :
         app.include_router(v1_router.router)
 """
 import logging
+import sys
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,10 +30,21 @@ from app.core.db import close_db, init_db
 from app.core.exceptions import AppException
 from app.core.responses import error_response
 
-logging.basicConfig(
-    level=settings.LOG_LEVEL,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
+_fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+_lvl = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
+
+logging.basicConfig(level=_lvl, format=_fmt, stream=sys.stderr)
+
+# WHY : uvicorn réconfigure souvent le root logger ; les `app.*` ne s’affichent plus.
+# Handler dédié sur le package `app` → logs [auth], [quiz-gen], etc. toujours visibles.
+_app_pkg = logging.getLogger("app")
+_app_pkg.setLevel(_lvl)
+if not _app_pkg.handlers:
+    _h = logging.StreamHandler(sys.stderr)
+    _h.setFormatter(logging.Formatter(_fmt))
+    _app_pkg.addHandler(_h)
+_app_pkg.propagate = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -66,6 +78,8 @@ def create_app() -> FastAPI:
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
         # WHY : les 503 « Auth unavailable » partent souvent avant toute log métier ([quiz-gen]).
+        _line = f"[http] {request.method} {request.url.path} -> {exc.status_code} detail={exc.detail!r}"
+        print(_line, flush=True, file=sys.stderr)
         logger.warning(
             "[http] %s %s -> %s detail=%s",
             request.method,
@@ -92,6 +106,22 @@ def create_app() -> FastAPI:
 
     # Routes
     app.include_router(v1_router, prefix="/v1")
+
+    @app.middleware("http")
+    async def trace_incoming_requests(request: Request, call_next):
+        # WHY : print stderr = visible même si la config logging uvicorn masque `app.*`.
+        p = request.url.path
+        if p.startswith("/v1"):
+            print(f"[trace] >>> {request.method} {p}", flush=True, file=sys.stderr)
+        try:
+            response = await call_next(request)
+        except BaseException:
+            if p.startswith("/v1"):
+                print(f"[trace] !!! EXC {request.method} {p}", flush=True, file=sys.stderr)
+            raise
+        if p.startswith("/v1"):
+            print(f"[trace] <<< {response.status_code} {request.method} {p}", flush=True, file=sys.stderr)
+        return response
 
     return app
 
