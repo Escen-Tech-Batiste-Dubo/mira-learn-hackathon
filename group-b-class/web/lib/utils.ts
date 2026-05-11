@@ -6,7 +6,7 @@ import { twMerge } from "tailwind-merge";
  * Pattern standard Hello Mira (cf. book-web, account-web).
  *
  * Usage :
- *   cn("px-4 py-2", isActive && "bg-blue-500", className)
+ *   cn("px-4 py-2", isActive && "bg-[var(--background)]", className)
  */
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));

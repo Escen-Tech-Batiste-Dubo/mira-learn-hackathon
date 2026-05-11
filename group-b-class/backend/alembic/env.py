@@ -13,10 +13,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.config import settings
 from app.models.base import Base
 
-# Charger les modèles pour autogenerate
-from app.models import example  # noqa: F401 — register table avec Base
-# Ajouter ici les imports des modèles au fur et à mesure :
-# from app.models import mira_class, mentor_application, ...
+# Charger les modèles métier Groupe B pour autogenerate.
+from app.models import mentor_profile, mira_class  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
