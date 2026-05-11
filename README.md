@@ -40,8 +40,6 @@ hackathon/
 | `groupe-c` | `REPLACE_WITH_SUPABASE_GROUPE_C_REF` | https://REPLACE_WITH_SUPABASE_GROUPE_C_URL.supabase.co | DB isolée pour Group C — catalogue + profil + parcours |
 | `groupe-d` | `REPLACE_WITH_SUPABASE_GROUPE_D_REF` | https://REPLACE_WITH_SUPABASE_GROUPE_D_URL.supabase.co | DB isolée pour Group D — mobile : suivi + notes + community |
 
-**Coût estimé** : 4 branches × $0.32/jour × 4 jours = **~$5 sur le hackathon**.
-
 **Auth Supabase** : les users (5 mentors test + 10 nomads + admins) sont créés sur la branche `main`, et **partagés automatiquement** entre toutes les branches (les preview branches héritent du même Auth pool).
 
 **API keys par branche** : chaque branche a sa propre publishable key (déjà injectée dans le `.env.example` de chaque groupe). Voir tableau dans chaque `.env.example`.
