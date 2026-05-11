@@ -72,8 +72,8 @@ class Settings(BaseSettings):
         """Construit l'URL JWKS Supabase si pas fournie explicitement."""
         if self.SUPABASE_JWKS_URL:
             return self.SUPABASE_JWKS_URL
-        # Pattern Supabase standard : {SUPABASE_URL}/auth/v1/jwks
-        return f"{self.SUPABASE_URL.rstrip('/')}/auth/v1/jwks"
+        # Pattern Supabase standard : {SUPABASE_URL}/auth/v1/.well-known/jwks.json
+        return f"{self.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
 
 
 settings = Settings()  # type: ignore[call-arg]
