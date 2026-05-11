@@ -19,7 +19,7 @@ MIGRATION HINT (post-hackathon, backbone Hello Mira) :
 """
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -61,6 +61,22 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=exc.status_code,
             content=error_response(message=exc.message, data=exc.data),
+        )
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+        # WHY : les 503 « Auth unavailable » partent souvent avant toute log métier ([quiz-gen]).
+        logger.warning(
+            "[http] %s %s -> %s detail=%s",
+            request.method,
+            request.url.path,
+            exc.status_code,
+            exc.detail,
+        )
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=exc.headers,
         )
 
     # Lifespan
