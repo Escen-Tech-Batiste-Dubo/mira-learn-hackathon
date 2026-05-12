@@ -24,7 +24,7 @@ export default function CallbackPage() {
     // Supabase capture automatiquement la session depuis l'URL hash
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
-        router.push("/me");
+        router.push("/dashboard/classes");
       } else {
         router.push("/login");
       }

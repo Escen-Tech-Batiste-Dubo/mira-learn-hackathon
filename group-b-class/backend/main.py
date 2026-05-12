@@ -18,22 +18,37 @@ MIGRATION HINT (post-hackathon, backbone Hello Mira) :
         app.include_router(v1_router.router)
 """
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.api.v1.router import router as v1_router
 from app.core.config import settings
 from app.core.db import close_db, init_db
 from app.core.exceptions import AppException
-from app.core.responses import error_response
+from app.core.responses import error_response, fail_response
 
 logging.basicConfig(
     level=settings.LOG_LEVEL,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Application lifecycle hooks."""
+    logger.info("Starting %s (build %s)", settings.SERVICE_NAME, settings.BUILD_SHA)
+    await init_db()
+    try:
+        yield
+    finally:
+        logger.info("Shutting down %s", settings.SERVICE_NAME)
+        await close_db()
 
 
 def create_app() -> FastAPI:
@@ -44,6 +59,7 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url=None,
         openapi_url="/openapi.json",
+        lifespan=lifespan,
     )
 
     # CORS (hackathon : permissif, sera restreint en V1 prod via edge-gateway)
@@ -63,16 +79,32 @@ def create_app() -> FastAPI:
             content=error_response(message=exc.message, data=exc.data),
         )
 
-    # Lifespan
-    @app.on_event("startup")
-    async def on_startup() -> None:
-        logger.info("Starting %s (build %s)", settings.SERVICE_NAME, settings.BUILD_SHA)
-        await init_db()
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+        message = exc.detail if isinstance(exc.detail, str) else "HTTP error"
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=fail_response(data={"detail": exc.detail}, message=message),
+            headers=exc.headers,
+        )
 
-    @app.on_event("shutdown")
-    async def on_shutdown() -> None:
-        logger.info("Shutting down %s", settings.SERVICE_NAME)
-        await close_db()
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(
+        request: Request,
+        exc: RequestValidationError,
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=422,
+            content=fail_response(data={"errors": exc.errors()}, message="Validation error"),
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        logger.error("Unhandled exception on %s %s", request.method, request.url.path, exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content=error_response(message="Internal server error"),
+        )
 
     # Routes
     app.include_router(v1_router, prefix="/v1")

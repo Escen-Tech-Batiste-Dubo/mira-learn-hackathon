@@ -33,7 +33,7 @@ import { getAccessToken } from "@/lib/supabase";
  *
  *   Voir `fronts/book-web/lib/sdk.ts` + `lib/api-client.ts` pour référence post-migration.
  */
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 /** Réponse JSend standard depuis le backend. */
 export type JSendResponse<T = unknown> = {
@@ -59,6 +59,10 @@ async function request<T>(
   path: string,
   body?: unknown,
 ): Promise<T> {
+  if (!API_URL) {
+    throw new ApiError("Configuration API manquante", 500);
+  }
+
   const token = await getAccessToken();
 
   const headers: Record<string, string> = {
