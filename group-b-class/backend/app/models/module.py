@@ -5,7 +5,8 @@ Mirrors the frozen 0001 schema for Group B.
 """
 from typing import Literal
 
-from sqlalchemy import CheckConstraint, Index, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, Index, Numeric, String, Text, UniqueConstraint, text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, IDMixin, SoftDeleteMixin, TimestampMixin
@@ -18,8 +19,14 @@ class MiraClassModule(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
 
     __tablename__ = "mira_class_module"
 
+    # Override IDMixin here because 0001 uses a DB-side uuid_generate_v4() default.
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+    )
     class_id: Mapped[str] = mapped_column(
-        String(36),
+        UUID(as_uuid=False),
         nullable=False,
     )
     position: Mapped[int] = mapped_column(nullable=False)
@@ -35,7 +42,7 @@ class MiraClassModule(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
         default="theory",
     )
     ai_generated: Mapped[bool] = mapped_column(nullable=False, default=False)
-    source_outline_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    source_outline_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
 
     __table_args__ = (
         CheckConstraint("duration_hours > 0", name="mira_class_module_duration_hours_check"),
