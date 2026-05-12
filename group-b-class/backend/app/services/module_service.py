@@ -6,11 +6,10 @@ Toute la logique d'ownership, de transition d'état et de soft delete vit ici.
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy import DateTime, String, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base
+from app.models.mira_class import MiraClass
 from app.models.module import MiraClassModule
 from app.schemas.module import MiraClassModuleCreate, MiraClassModuleReorder, MiraClassModuleUpdate
 
@@ -28,18 +27,6 @@ EDITABLE_MODULE_FIELDS = frozenset({"title", "description", "type", "duration_ho
 MODULE_CREATION_STATUS_TRANSITIONS = {
     "validated_draft": "enrichment_in_progress",
 }
-
-
-class MiraClass(Base):
-    """Minimal local mapping for ownership and status checks on `mira_class`."""
-
-    __tablename__ = "mira_class"
-    __table_args__ = {"extend_existing": True}
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    mentor_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
-    status: Mapped[str] = mapped_column(String(32), nullable=False)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ModuleService:

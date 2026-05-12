@@ -30,7 +30,7 @@ def get_module_service(db: AsyncSession = Depends(get_db)) -> ModuleService:
 async def list_modules(
     class_id: str,
     service: ModuleService = Depends(get_module_service),
-    user: AuthenticatedUser = Depends(require_role("mentor", "admin")),
+    user: AuthenticatedUser = Depends(require_role("mentor")),
 ) -> dict:
     modules = await service.list_modules(class_id, user.user_id)
     return success_response(
@@ -52,7 +52,7 @@ async def create_module(
     class_id: str,
     body: MiraClassModuleCreate,
     service: ModuleService = Depends(get_module_service),
-    user: AuthenticatedUser = Depends(require_role("mentor", "admin")),
+    user: AuthenticatedUser = Depends(require_role("mentor")),
 ) -> dict:
     module = await service.create_module(class_id, body, user.user_id)
     return success_response(
@@ -70,7 +70,7 @@ async def reorder_modules(
     class_id: str,
     body: MiraClassModuleReorder,
     service: ModuleService = Depends(get_module_service),
-    user: AuthenticatedUser = Depends(require_role("mentor", "admin")),
+    user: AuthenticatedUser = Depends(require_role("mentor")),
 ) -> dict:
     modules = await service.reorder_modules(class_id, body, user.user_id)
     return success_response(
@@ -92,7 +92,7 @@ async def update_module(
     module_id: str,
     body: MiraClassModuleUpdate,
     service: ModuleService = Depends(get_module_service),
-    user: AuthenticatedUser = Depends(require_role("mentor", "admin")),
+    user: AuthenticatedUser = Depends(require_role("mentor")),
 ) -> dict:
     if not body.model_dump(exclude_none=True):
         return JSONResponse(
@@ -116,7 +116,7 @@ async def delete_module(
     class_id: str,
     module_id: str,
     service: ModuleService = Depends(get_module_service),
-    user: AuthenticatedUser = Depends(require_role("mentor", "admin")),
+    user: AuthenticatedUser = Depends(require_role("mentor")),
 ) -> dict:
     await service.delete_module(class_id, module_id, user.user_id)
     return success_response(data={}, message="Module supprimé")
