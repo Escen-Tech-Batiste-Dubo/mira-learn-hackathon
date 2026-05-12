@@ -27,3 +27,6 @@ build/
 # Logs
 *.log
 .local/
+docs/superpowers/specs/2026-05-12-group-b-cursor-rules-design.md
+.cursor/rules/group-b-safety-security-review.mdc
+.cursor/rules/group-b-context-loading.mdc
