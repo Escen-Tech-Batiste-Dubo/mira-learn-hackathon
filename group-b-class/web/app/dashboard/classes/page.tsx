@@ -11,6 +11,10 @@ import {
   MapPin,
   MonitorPlay,
   Sparkles,
+  Plus,
+  Trash2,
+  Loader2,
+  Pencil,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
@@ -159,14 +163,38 @@ function ClassesSkeleton() {
   );
 }
 
-function ClassCard({ miraClass }: { miraClass: MiraClass }) {
+function ClassCard({ miraClass, 
+  onDelete,
+  isDeleting
+  } : { 
+    miraClass: MiraClass;
+    onDelete: (id: string) => void;
+    isDeleting: boolean;
+  }) {
   const description =
     miraClass.description.trim().length > 0
       ? miraClass.description
       : "Ajoute une description pour aider les apprenants à comprendre le parcours.";
 
   return (
-    <Card className="p-0">
+    <Card className="p-0 relative group">
+
+      <div className="absolute top-4 right-4 flex items-center gap-1 z-20">
+        <Link href={`/dashboard/classes/${miraClass.id}/edit`}>
+          <button className="p-2 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/5 rounded-full transition-all">
+            <Pencil className="h-4 w-4" />
+          </button>
+        </Link>
+
+        <button 
+          onClick={(e) => { e.preventDefault(); onDelete(miraClass.id); }}
+          disabled={isDeleting}
+          className="p-2 text-[var(--muted-foreground)] hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+        >
+          {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+        </button>
+      </div>
+
       <Link
         href={`/dashboard/classes/${miraClass.id}/modules`}
         className="group block px-5 py-5 transition-all hover:bg-[var(--color-card)] sm:px-6"
@@ -206,6 +234,7 @@ export default function DashboardClassesPage() {
   const [error, setError] = useState<string | null>(null);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -266,6 +295,23 @@ export default function DashboardClassesPage() {
     router.replace("/login");
   }
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("Es-tu sûr de vouloir supprimer cette Mira Class ? Cette action est irréversible.")) {
+      return;
+    }
+
+    setDeletingId(id);
+    try {
+      await apiClient.delete(`/v1/classes/${id}`);
+      setClasses((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      alert("Erreur lors de la suppression. Vérifie tes permissions.");
+      console.error(err);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const subtitle = useMemo(() => {
     if (classes.length === 0) {
       return "Structure tes parcours, puis ouvre des sessions concrètes aux apprenants.";
@@ -287,6 +333,13 @@ export default function DashboardClassesPage() {
             {subtitle}
           </p>
         </div>
+
+        <Link href="/dashboard/classes/new">
+          <Button className="flex items-center gap-2 px-6">
+            <Plus className="h-4 w-4" />
+            Créer une Mira Class
+          </Button>
+        </Link>
       </header>
 
       {loading && <ClassesSkeleton />}
@@ -325,7 +378,12 @@ export default function DashboardClassesPage() {
 
           <div className="space-y-3">
             {classes.map((miraClass) => (
-              <ClassCard key={miraClass.id} miraClass={miraClass} />
+              <ClassCard 
+                key={miraClass.id} 
+                miraClass={miraClass} 
+                onDelete={handleDelete}
+                isDeleting={deletingId === miraClass.id}
+              />
             ))}
           </div>
         </section>
