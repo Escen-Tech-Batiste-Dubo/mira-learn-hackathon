@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.models.base import Base
 
 # Charger les modèles métier Groupe B pour autogenerate.
-from app.models import mentor_profile, mira_class  # noqa: F401
+from app.models import mentor_profile, mira_class, mira_class_session  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
