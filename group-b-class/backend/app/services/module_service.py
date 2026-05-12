@@ -103,6 +103,13 @@ class ModuleService:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
+    def _get_active_class_modules(self, class_modules: list[MiraClassModule]) -> list[MiraClassModule]:
+        return [
+            module
+            for module in sorted(class_modules, key=lambda item: item.position)
+            if module.deleted_at is None
+        ]
+
     def _maybe_transition_class(self, cls: MiraClass) -> None:
         next_status = MODULE_CREATION_STATUS_TRANSITIONS.get(cls.status)
         if next_status is not None:
@@ -206,7 +213,7 @@ class ModuleService:
             )
 
         class_modules = await self._get_class_modules(class_id)
-        active_modules = self._sorted_active_modules(class_modules)
+        active_modules = self._get_active_class_modules(class_modules)
         ordered_active_modules = active_modules.copy()
 
         module = MiraClassModule(
@@ -246,7 +253,7 @@ class ModuleService:
 
         if target_position is not None and target_position != module.position:
             class_modules = await self._get_class_modules(class_id)
-            active_modules = self._sorted_active_modules(class_modules)
+            active_modules = self._get_active_class_modules(class_modules)
             if target_position < 1 or target_position > len(active_modules):
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -273,7 +280,7 @@ class ModuleService:
         self._assert_enrichable(cls)
 
         class_modules = await self._get_class_modules(class_id)
-        active_modules = self._sorted_active_modules(class_modules)
+        active_modules = self._get_active_class_modules(class_modules)
         requested_positions = self._validate_reorder_targets(active_modules, body)
         ordered_active_modules = sorted(active_modules, key=lambda module: requested_positions[module.id])
         await self._persist_module_order(class_modules, ordered_active_modules)
@@ -287,8 +294,6 @@ class ModuleService:
 
         module.deleted_at = datetime.now(UTC)
         class_modules = await self._get_class_modules(class_id)
-        remaining_active_modules = [
-            item for item in self._sorted_active_modules(class_modules) if item.id != module_id
-        ]
+        remaining_active_modules = self._get_active_class_modules(class_modules)
         await self._persist_module_order(class_modules, remaining_active_modules)
         await self.db.commit()
