@@ -1,7 +1,8 @@
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, IDMixin, TimestampMixin
@@ -13,24 +14,25 @@ class MiraClassEnrolment(Base, IDMixin, TimestampMixin):
     __tablename__ = "mira_class_enrolment"
 
     session_id: Mapped[str] = mapped_column(
-        String(36),
+        UUID(as_uuid=False),
         ForeignKey("mira_class_session.id", ondelete="CASCADE"),
         nullable=False,
     )
-    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="applied")
     waitlist_position: Mapped[int | None] = mapped_column(nullable=True)
     application_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
-    decision_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    decision_by_mentor_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    decision_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decision_by_mentor_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
     decision_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    cancellation_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    cancellation_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancellation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    enrolled_at: Mapped[datetime] = mapped_column(nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completion_score_pct: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    enrolled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (
         CheckConstraint(

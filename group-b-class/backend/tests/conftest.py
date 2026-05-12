@@ -5,7 +5,6 @@ MIGRATION HINT (post-hackathon) :
     Remplacé par `ms-common-api.testing` qui propose des fixtures pré-câblées
     (test_db, async_client, mock_auth, mock_nats, etc.).
 """
-import asyncio
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -14,14 +13,6 @@ from httpx import ASGITransport, AsyncClient
 
 from app.core.db import AsyncSessionLocal
 from main import app
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Force a single event loop for the whole test session."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest_asyncio.fixture
