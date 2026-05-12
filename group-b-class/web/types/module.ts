@@ -20,6 +20,7 @@ export interface Module {
 }
 
 export interface CreateModulePayload {
+  position: number;
   title: string;
   description?: string;
   type: ModuleType;
@@ -28,6 +29,7 @@ export interface CreateModulePayload {
 }
 
 export interface UpdateModulePayload {
+  position?: number;
   title?: string;
   description?: string;
   type?: ModuleType;
@@ -35,5 +37,5 @@ export interface UpdateModulePayload {
 }
 
 export interface ReorderPayload {
-  modules: Array<{ id: string; position: number }>;
+  module_ids_in_order: string[];
 }

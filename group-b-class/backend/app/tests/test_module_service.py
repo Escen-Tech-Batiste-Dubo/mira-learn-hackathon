@@ -4,6 +4,7 @@ Unit tests for `ModuleService`.
 These tests mock `AsyncSession` directly and never hit the real database.
 """
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 import sys
 from unittest.mock import AsyncMock, MagicMock
@@ -93,20 +94,20 @@ def _make_module(
 async def test_list_returns_active_modules_ordered_by_position() -> None:
     cls = _make_class("mentor-1")
     modules = [
-        _make_module(cls.id, 2, module_id="module-2"),
-        _make_module(cls.id, 0, module_id="module-0"),
+        _make_module(cls.id, 3, module_id="module-3"),
         _make_module(cls.id, 1, module_id="module-1"),
+        _make_module(cls.id, 2, module_id="module-2"),
     ]
     db = _make_db(_ScalarResult(cls), _ScalarsResult(modules))
 
     service = ModuleService(db)
     result = await service.list_modules(cls.id, "mentor-1")
 
-    assert [module.position for module in result] == [0, 1, 2]
+    assert [module.position for module in result] == [1, 2, 3]
 
 
 @pytest.mark.asyncio
-async def test_list_raises_404_unknown_class() -> None:
+async def test_list_raises_403_unknown_class() -> None:
     db = _make_db(_ScalarResult(None))
 
     service = ModuleService(db)
@@ -114,7 +115,8 @@ async def test_list_raises_404_unknown_class() -> None:
     with pytest.raises(HTTPException) as exc_info:
         await service.list_modules("missing-class", "mentor-1")
 
-    assert exc_info.value.status_code == 404
+    assert exc_info.value.status_code == 403
+    assert exc_info.value.detail == "You do not own this class"
 
 
 @pytest.mark.asyncio
@@ -131,34 +133,17 @@ async def test_list_raises_403_wrong_mentor() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_happy_path_first_module_gets_position_0() -> None:
+async def test_create_happy_path_uses_client_position() -> None:
     cls = _make_class("mentor-1")
-    db = _make_db(_ScalarResult(cls), _ScalarResult(None))
+    db = _make_db(_ScalarResult(cls), _ScalarResult(0), _ScalarsResult([]))
 
     service = ModuleService(db)
     body = MiraClassModuleCreate(
+        position=1,
         title="Intro",
-        description=None,
+        description="",
         type="theory",
-        duration_hours=2.0,
-    )
-
-    module = await service.create_module(cls.id, body, "mentor-1")
-
-    assert module.position == 0
-
-
-@pytest.mark.asyncio
-async def test_create_second_module_gets_position_1() -> None:
-    cls = _make_class("mentor-1")
-    db = _make_db(_ScalarResult(cls), _ScalarResult(0))
-
-    service = ModuleService(db)
-    body = MiraClassModuleCreate(
-        title="Second",
-        description=None,
-        type="practice",
-        duration_hours=3.0,
+        duration_hours=Decimal("2.0"),
     )
 
     module = await service.create_module(cls.id, body, "mentor-1")
@@ -169,14 +154,15 @@ async def test_create_second_module_gets_position_1() -> None:
 @pytest.mark.asyncio
 async def test_create_transitions_validated_draft_to_enrichment() -> None:
     cls = _make_class("mentor-1", status="validated_draft")
-    db = _make_db(_ScalarResult(cls), _ScalarResult(None))
+    db = _make_db(_ScalarResult(cls), _ScalarResult(0), _ScalarsResult([]))
 
     service = ModuleService(db)
     body = MiraClassModuleCreate(
+        position=1,
         title="Intro",
-        description=None,
+        description="",
         type="theory",
-        duration_hours=2.0,
+        duration_hours=Decimal("2.0"),
     )
 
     await service.create_module(cls.id, body, "mentor-1")
@@ -187,14 +173,15 @@ async def test_create_transitions_validated_draft_to_enrichment() -> None:
 @pytest.mark.asyncio
 async def test_create_does_not_transition_if_already_enrichment() -> None:
     cls = _make_class("mentor-1", status="enrichment_in_progress")
-    db = _make_db(_ScalarResult(cls), _ScalarResult(None))
+    db = _make_db(_ScalarResult(cls), _ScalarResult(0), _ScalarsResult([]))
 
     service = ModuleService(db)
     body = MiraClassModuleCreate(
+        position=1,
         title="Intro",
-        description=None,
+        description="",
         type="theory",
-        duration_hours=2.0,
+        duration_hours=Decimal("2.0"),
     )
 
     await service.create_module(cls.id, body, "mentor-1")
@@ -209,10 +196,11 @@ async def test_create_raises_409_class_in_draft_status() -> None:
 
     service = ModuleService(db)
     body = MiraClassModuleCreate(
+        position=1,
         title="Intro",
-        description=None,
+        description="",
         type="theory",
-        duration_hours=2.0,
+        duration_hours=Decimal("2.0"),
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -222,16 +210,57 @@ async def test_create_raises_409_class_in_draft_status() -> None:
 
 
 @pytest.mark.asyncio
+async def test_create_raises_409_max_modules_reached() -> None:
+    cls = _make_class("mentor-1")
+    db = _make_db(_ScalarResult(cls), _ScalarResult(12))
+
+    service = ModuleService(db)
+    body = MiraClassModuleCreate(
+        position=1,
+        title="Trop de modules",
+        description="",
+        type="theory",
+        duration_hours=Decimal("2.0"),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.create_module(cls.id, body, "mentor-1")
+
+    assert exc_info.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_create_raises_422_when_position_skips_next_slot() -> None:
+    cls = _make_class("mentor-1")
+    db = _make_db(_ScalarResult(cls), _ScalarResult(1))
+
+    service = ModuleService(db)
+    body = MiraClassModuleCreate(
+        position=3,
+        title="Position invalide",
+        description="",
+        type="theory",
+        duration_hours=Decimal("2.0"),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.create_module(cls.id, body, "mentor-1")
+
+    assert exc_info.value.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_create_raises_403_wrong_mentor() -> None:
     cls = _make_class("mentor-owner")
     db = _make_db(_ScalarResult(cls))
 
     service = ModuleService(db)
     body = MiraClassModuleCreate(
+        position=1,
         title="Intro",
-        description=None,
+        description="",
         type="theory",
-        duration_hours=2.0,
+        duration_hours=Decimal("2.0"),
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -241,9 +270,34 @@ async def test_create_raises_403_wrong_mentor() -> None:
 
 
 @pytest.mark.asyncio
+async def test_create_inserts_module_at_requested_position() -> None:
+    cls = _make_class("mentor-1")
+    module_a = _make_module(cls.id, 1, module_id="module-a")
+    module_b = _make_module(cls.id, 2, module_id="module-b")
+    db = _make_db(
+        _ScalarResult(cls),
+        _ScalarResult(2),
+        _ScalarsResult([module_a, module_b]),
+    )
+
+    service = ModuleService(db)
+    body = MiraClassModuleCreate(
+        position=2,
+        title="Nouveau module",
+        description="",
+        type="theory",
+        duration_hours=Decimal("2.0"),
+    )
+
+    module = await service.create_module(cls.id, body, "mentor-1")
+
+    assert [module_a.position, module.position, module_b.position] == [1, 2, 3]
+
+
+@pytest.mark.asyncio
 async def test_update_applies_only_provided_fields() -> None:
     cls = _make_class("mentor-1")
-    module = _make_module(cls.id, 0, title="Old title", duration_hours=4.0)
+    module = _make_module(cls.id, 1, title="Old title", duration_hours=4.0)
     db = _make_db(_ScalarResult(cls), _ScalarResult(module))
 
     service = ModuleService(db)
@@ -258,7 +312,7 @@ async def test_update_applies_only_provided_fields() -> None:
 @pytest.mark.asyncio
 async def test_update_raises_404_deleted_module() -> None:
     cls = _make_class("mentor-1")
-    module = _make_module(cls.id, 0, deleted_at=datetime.now(UTC))
+    module = _make_module(cls.id, 1, deleted_at=datetime.now(UTC))
     db = _make_db(_ScalarResult(cls), _ScalarResult(module))
 
     service = ModuleService(db)
@@ -285,40 +339,51 @@ async def test_update_raises_403_wrong_mentor() -> None:
 
 
 @pytest.mark.asyncio
-async def test_reorder_updates_positions_correctly() -> None:
+async def test_update_reorders_modules_when_position_changes() -> None:
     cls = _make_class("mentor-1")
-    module_a = _make_module(cls.id, 0, module_id="module-a")
-    module_b = _make_module(cls.id, 1, module_id="module-b")
+    module_a = _make_module(cls.id, 1, module_id="module-a")
+    module_b = _make_module(cls.id, 2, module_id="module-b", title="Before")
+    module_c = _make_module(cls.id, 3, module_id="module-c")
     db = _make_db(
         _ScalarResult(cls),
-        _ScalarsResult([module_a, module_b]),
-        _ScalarResult(cls),
-        _ScalarsResult([module_b, module_a]),
+        _ScalarResult(module_b),
+        _ScalarsResult([module_a, module_b, module_c]),
     )
 
     service = ModuleService(db)
-    body = MiraClassModuleReorder(
-        modules=[
-            {"id": "module-a", "position": 1},
-            {"id": "module-b", "position": 0},
-        ]
-    )
+    body = MiraClassModuleUpdate(position=1, title="After")
+
+    updated = await service.update_module(cls.id, module_b.id, body, "mentor-1")
+
+    assert updated.title == "After"
+    assert [module.position for module in (module_b, module_a, module_c)] == [1, 2, 3]
+
+
+@pytest.mark.asyncio
+async def test_reorder_assigns_positions_by_index() -> None:
+    cls = _make_class("mentor-1")
+    module_a = _make_module(cls.id, 1, module_id="module-a")
+    module_b = _make_module(cls.id, 2, module_id="module-b")
+    db = _make_db(_ScalarResult(cls), _ScalarsResult([module_a, module_b]))
+
+    service = ModuleService(db)
+    body = MiraClassModuleReorder(module_ids_in_order=["module-b", "module-a"])
 
     result = await service.reorder_modules(cls.id, body, "mentor-1")
 
-    assert module_b.position == 0
-    assert module_a.position == 1
+    assert module_b.position == 1
+    assert module_a.position == 2
     assert [module.id for module in result] == ["module-b", "module-a"]
 
 
 @pytest.mark.asyncio
 async def test_reorder_raises_422_unknown_module_id() -> None:
     cls = _make_class("mentor-1")
-    module_a = _make_module(cls.id, 0, module_id="module-a")
+    module_a = _make_module(cls.id, 1, module_id="module-a")
     db = _make_db(_ScalarResult(cls), _ScalarsResult([module_a]))
 
     service = ModuleService(db)
-    body = MiraClassModuleReorder(modules=[{"id": "missing-module", "position": 0}])
+    body = MiraClassModuleReorder(module_ids_in_order=["missing-module"])
 
     with pytest.raises(HTTPException) as exc_info:
         await service.reorder_modules(cls.id, body, "mentor-1")
@@ -329,13 +394,20 @@ async def test_reorder_raises_422_unknown_module_id() -> None:
 @pytest.mark.asyncio
 async def test_delete_sets_deleted_at_not_db_delete() -> None:
     cls = _make_class("mentor-1")
-    module = _make_module(cls.id, 0)
-    db = _make_db(_ScalarResult(cls), _ScalarResult(module))
+    module = _make_module(cls.id, 1, module_id="module-a")
+    sibling = _make_module(cls.id, 2, module_id="module-b")
+    db = _make_db(
+        _ScalarResult(cls),
+        _ScalarResult(module),
+        _ScalarsResult([module, sibling]),
+    )
 
     service = ModuleService(db)
     await service.delete_module(cls.id, module.id, "mentor-1")
 
     assert module.deleted_at is not None
+    assert sibling.position == 1
+    assert module.position > 10000
     db.delete.assert_not_called()
 
 

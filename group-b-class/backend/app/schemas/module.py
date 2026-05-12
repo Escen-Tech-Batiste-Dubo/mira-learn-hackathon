@@ -1,79 +1,45 @@
-"""
-Schémas Pydantic v2 pour `mira_class_module`.
-
-Alignés sur le modèle ORM Group B et sur les contraintes API demandées.
-"""
 from datetime import datetime
-from typing import Annotated, Literal
+from decimal import Decimal
+from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field
 
-MiraClassModuleType = Literal["theory", "practice", "exercise", "discussion", "workshop"]
-
-ModuleId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
-ModuleTitle = Annotated[
-    str,
-    StringConstraints(strip_whitespace=True, min_length=1, max_length=200),
-]
-ModuleDescription = Annotated[str | None, Field(default=None, max_length=4000)]
-ModuleDurationHours = Annotated[float, Field(strict=True, gt=0, le=12.0)]
-ModulePosition = Annotated[int, Field(strict=True, ge=0)]
-ModuleAiGenerated = Annotated[bool, Field(strict=True)]
+ModuleType = Literal["theory", "practice", "exercise", "discussion", "workshop"]
 
 
-class MiraClassModuleCreate(BaseModel):
-    """Body de création d'un module."""
+class MiraClassModuleBase(BaseModel):
+    position: int = Field(..., ge=1)
+    title: str = Field(..., max_length=200)
+    description: str = Field(default="", max_length=10000)
+    duration_hours: Decimal = Field(..., gt=0)
+    type: ModuleType = "theory"
 
-    model_config = ConfigDict(extra="forbid")
 
-    title: ModuleTitle
-    description: ModuleDescription = None
-    type: MiraClassModuleType
-    duration_hours: ModuleDurationHours
-    ai_generated: ModuleAiGenerated = False
+class MiraClassModuleCreate(MiraClassModuleBase):
+    ai_generated: bool = False
+    source_outline_id: Optional[str] = None
 
 
 class MiraClassModuleUpdate(BaseModel):
-    """Body de PATCH d'un module avec sémantique partielle."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    title: ModuleTitle | None = None
-    description: ModuleDescription = None
-    type: MiraClassModuleType | None = None
-    duration_hours: ModuleDurationHours | None = None
-
-
-class ModulePositionItem(BaseModel):
-    """Position cible d'un module pour une opération de réordonnancement."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    id: ModuleId
-    position: ModulePosition
+    position: Optional[int] = Field(None, ge=1)
+    title: Optional[str] = Field(None, max_length=200)
+    description: Optional[str] = Field(None, max_length=10000)
+    duration_hours: Optional[Decimal] = Field(None, gt=0)
+    type: Optional[ModuleType] = None
 
 
 class MiraClassModuleReorder(BaseModel):
-    """Body de reorder de modules."""
+    """Réorganisation des modules d'une class."""
 
-    model_config = ConfigDict(extra="forbid")
-
-    modules: list[ModulePositionItem] = Field(..., min_length=1)
+    module_ids_in_order: list[str]
 
 
-class MiraClassModuleRead(BaseModel):
-    """Vue de réponse complète d'un module."""
-
-    model_config = ConfigDict(from_attributes=True, extra="forbid")
-
-    id: ModuleId
-    class_id: ModuleId
-    position: ModulePosition
-    title: ModuleTitle
-    description: ModuleDescription = None
-    type: MiraClassModuleType
-    duration_hours: ModuleDurationHours
-    ai_generated: ModuleAiGenerated
-    source_outline_id: ModuleId | None
+class MiraClassModuleRead(MiraClassModuleBase):
+    id: str
+    class_id: str
+    ai_generated: bool
+    source_outline_id: Optional[str]
     created_at: datetime
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

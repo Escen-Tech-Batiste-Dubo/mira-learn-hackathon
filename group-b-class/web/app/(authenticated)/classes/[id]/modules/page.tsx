@@ -2,7 +2,6 @@
 
 import { useParams } from "next/navigation";
 import {
-  type FormEvent,
   type SVGProps,
   useCallback,
   useEffect,
@@ -11,19 +10,12 @@ import {
 } from "react";
 
 import {
-  useCreateModule,
   useDeleteModule,
   useModules,
   useReorderModules,
-  useUpdateModule,
 } from "@/hooks/useModules";
-import type {
-  CreateModulePayload,
-  Module,
-  ModuleType,
-  ReorderPayload,
-  UpdateModulePayload,
-} from "@/types/module";
+import { ModuleDrawer } from "@/components/modules/ModuleDrawer";
+import type { Module, ModuleType } from "@/types/module";
 
 type ToastState =
   | {
@@ -40,11 +32,7 @@ const MODULE_TYPE_LABELS: Record<ModuleType, string> = {
   workshop: "Atelier",
 };
 
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
+function getErrorMessage(fallback: string): string {
   return fallback;
 }
 
@@ -55,17 +43,8 @@ function reorderLocally(modules: Module[], fromIndex: number, toIndex: number): 
 
   return reordered.map((module, index) => ({
     ...module,
-    position: index,
+    position: index + 1,
   }));
-}
-
-function buildReorderPayload(modules: Module[]): ReorderPayload {
-  return {
-    modules: modules.map((module, index) => ({
-      id: module.id,
-      position: index,
-    })),
-  };
 }
 
 function GripVerticalIcon(props: SVGProps<SVGSVGElement>) {
@@ -127,161 +106,11 @@ function Toast({ toast }: { toast: Exclude<ToastState, null> }) {
   return <div className={className}>{toast.message}</div>;
 }
 
-type ModuleDrawerProps = {
-  open: boolean;
-  module: Module | null;
-  isLoading: boolean;
-  onClose: () => void;
-  onSubmit: (payload: CreateModulePayload | UpdateModulePayload) => Promise<void>;
-};
-
-function ModuleDrawer({ open, module, isLoading, onClose, onSubmit }: ModuleDrawerProps) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [type, setType] = useState<ModuleType>("theory");
-  const [durationHours, setDurationHours] = useState("1");
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    setTitle(module?.title ?? "");
-    setDescription(module?.description ?? "");
-    setType(module?.type ?? "theory");
-    setDurationHours(module ? String(module.duration_hours) : "1");
-  }, [module, open]);
-
-  if (!open) {
-    return null;
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-
-    const trimmedTitle = title.trim();
-    const nextDurationHours = Number(durationHours);
-    const payload = {
-      title: trimmedTitle,
-      description: description.trim() ? description.trim() : "",
-      type,
-      duration_hours: nextDurationHours,
-    };
-
-    await onSubmit(payload);
-  }
-
-  return (
-    <div className="fixed inset-0 z-40 flex bg-black/20">
-      <button
-        aria-label="Fermer"
-        className="flex-1 cursor-default"
-        onClick={onClose}
-        type="button"
-      />
-      <aside className="w-full max-w-md border-l border-[#E5E7EB] bg-white p-6 font-[Manrope]">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="font-[Playfair_Display] text-2xl font-bold text-[#1D1D1B]">
-              {module ? "Modifier le module" : "Ajouter un module"}
-            </h2>
-            <p className="mt-2 text-sm text-[#888888]">
-              {module
-                ? "Mets a jour le titre, la duree et le type de ce module."
-                : "Ajoute le premier contenu pedagogique de ta Mira Class."}
-            </p>
-          </div>
-          <button
-            className="h-[44px] rounded-lg border border-[#B6B0A6] bg-white px-4 text-[#1D1D1B]"
-            onClick={onClose}
-            type="button"
-          >
-            Fermer
-          </button>
-        </div>
-
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-[#1D1D1B]">Titre</span>
-            <input
-              className="h-[44px] w-full rounded-lg border border-[#E5E7EB] bg-white px-4 text-[#1D1D1B]"
-              maxLength={200}
-              onChange={(event) => setTitle(event.target.value)}
-              required
-              value={title}
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-[#1D1D1B]">Type</span>
-            <select
-              className="h-[44px] w-full rounded-lg border border-[#E5E7EB] bg-white px-4 text-[#1D1D1B]"
-              onChange={(event) => setType(event.target.value as ModuleType)}
-              value={type}
-            >
-              {Object.entries(MODULE_TYPE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-[#1D1D1B]">
-              Duree (heures)
-            </span>
-            <input
-              className="h-[44px] w-full rounded-lg border border-[#E5E7EB] bg-white px-4 text-[#1D1D1B]"
-              max="12"
-              min="0.1"
-              onChange={(event) => setDurationHours(event.target.value)}
-              required
-              step="0.1"
-              type="number"
-              value={durationHours}
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-[#1D1D1B]">Description</span>
-            <textarea
-              className="min-h-[140px] w-full rounded-xl border border-[#E5E7EB] bg-white p-4 text-[#1D1D1B]"
-              maxLength={4000}
-              onChange={(event) => setDescription(event.target.value)}
-              value={description}
-            />
-          </label>
-
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <button
-              className="h-[44px] rounded-lg border border-[#B6B0A6] bg-white px-4 text-[#1D1D1B]"
-              onClick={onClose}
-              type="button"
-            >
-              Annuler
-            </button>
-            <button
-              className="h-[44px] rounded-lg bg-[#E6332A] px-4 text-white"
-              disabled={isLoading}
-              type="submit"
-            >
-              {isLoading ? "Enregistrement..." : module ? "Enregistrer" : "Ajouter"}
-            </button>
-          </div>
-        </form>
-      </aside>
-    </div>
-  );
-}
-
 export default function ModulesPage() {
   const params = useParams<{ id: string }>();
   const classId = typeof params.id === "string" ? params.id : "";
 
   const { modules, isLoading, error, mutate } = useModules(classId);
-  const { createModule, isLoading: isCreating } = useCreateModule(classId);
-  const { updateModule, isLoading: isUpdating } = useUpdateModule(classId);
   const { reorderModules, isLoading: isReordering } = useReorderModules(classId);
   const { deleteModule, isLoading: isDeleting } = useDeleteModule(classId);
 
@@ -290,8 +119,6 @@ export default function ModulesPage() {
   const [confirmingModuleId, setConfirmingModuleId] = useState<string | null>(null);
   const [localModules, setLocalModules] = useState<Module[]>([]);
   const [toast, setToast] = useState<ToastState>(null);
-
-  const isDrawerSubmitting = isCreating || isUpdating;
 
   useEffect(() => {
     setLocalModules(modules);
@@ -315,6 +142,7 @@ export default function ModulesPage() {
     () => [...localModules].sort((left, right) => left.position - right.position),
     [localModules],
   );
+  const hasReachedModuleLimit = modules.length >= 12;
 
   const openCreateDrawer = useCallback(() => {
     setEditingModule(null);
@@ -330,29 +158,6 @@ export default function ModulesPage() {
     setDrawerOpen(false);
     setEditingModule(null);
   }, []);
-
-  const handleDrawerSubmit = useCallback(
-    async (payload: CreateModulePayload | UpdateModulePayload): Promise<void> => {
-      try {
-        if (editingModule) {
-          await updateModule(editingModule.id, payload as UpdateModulePayload);
-        } else {
-          await createModule(payload as CreateModulePayload);
-        }
-        closeDrawer();
-      } catch (submitError: unknown) {
-        setToast({
-          kind: "error",
-          message: getErrorMessage(
-            submitError,
-            "Hmm, on n'a pas reussi a enregistrer ce module. Reessaie ?",
-          ),
-        });
-        throw submitError;
-      }
-    },
-    [closeDrawer, createModule, editingModule, updateModule],
-  );
 
   const handleMoveModule = useCallback(
     async (moduleId: string, direction: "up" | "down"): Promise<void> => {
@@ -371,17 +176,14 @@ export default function ModulesPage() {
       setLocalModules(reorderedModules);
 
       try {
-        await reorderModules(buildReorderPayload(reorderedModules));
+        await reorderModules(reorderedModules.map((module) => module.id));
         setToast({ kind: "success", message: "Ordre mis a jour" });
-      } catch (reorderError: unknown) {
+      } catch {
         setLocalModules(previousModules);
         mutate();
         setToast({
           kind: "error",
-          message: getErrorMessage(
-            reorderError,
-            "Hmm, on n'a pas reussi a reordonner les modules. Reessaie ?",
-          ),
+          message: getErrorMessage("Hmm, on n'a pas reussi a reordonner les modules. Reessaie ?"),
         });
       }
     },
@@ -397,18 +199,15 @@ export default function ModulesPage() {
             .filter((module) => module.id !== moduleId)
             .map((module, index) => ({
               ...module,
-              position: index,
+              position: index + 1,
             })),
         );
         setConfirmingModuleId(null);
         setToast({ kind: "success", message: "Module supprime" });
-      } catch (deleteError: unknown) {
+      } catch {
         setToast({
           kind: "error",
-          message: getErrorMessage(
-            deleteError,
-            "Hmm, on n'a pas reussi a supprimer ce module. Reessaie ?",
-          ),
+          message: getErrorMessage("Hmm, on n'a pas reussi a supprimer ce module. Reessaie ?"),
         });
       }
     },
@@ -430,13 +229,20 @@ export default function ModulesPage() {
             </p>
           </div>
 
-          <button
-            className="h-[44px] rounded-lg bg-[#E6332A] px-4 text-white"
-            onClick={openCreateDrawer}
-            type="button"
-          >
-            + Ajouter
-          </button>
+          <div className="flex flex-col items-end gap-2">
+            <button
+              className="h-[44px] rounded-lg bg-[#E6332A] px-4 text-white disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={hasReachedModuleLimit}
+              onClick={openCreateDrawer}
+              title={hasReachedModuleLimit ? "Maximum 12 modules atteint" : undefined}
+              type="button"
+            >
+              + Ajouter
+            </button>
+            {hasReachedModuleLimit ? (
+              <p className="text-xs text-[#888888]">Maximum 12 modules atteint</p>
+            ) : null}
+          </div>
         </div>
 
         <div className="pt-6">
@@ -453,9 +259,7 @@ export default function ModulesPage() {
 
           {!isLoading && error && sortedModules.length === 0 ? (
             <div className="rounded-xl border border-[#E5E7EB] bg-white p-6">
-              <p className="text-sm text-[#1D1D1B]">
-                {getErrorMessage(error, "Hmm, on n'a pas reussi a charger les modules.")}
-              </p>
+              <p className="text-sm text-[#1D1D1B]">{getErrorMessage("Hmm, on n'a pas reussi a charger les modules.")}</p>
               <button
                 className="mt-4 h-[44px] rounded-lg border border-[#B6B0A6] bg-white px-4 text-[#1D1D1B] hover:bg-[#E2DCD3]"
                 onClick={mutate}
@@ -516,7 +320,7 @@ export default function ModulesPage() {
                     </div>
 
                     <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E2DCD3] text-xs font-medium text-[#1D1D1B]">
-                      {module.position + 1}
+                      {module.position}
                     </div>
 
                     <div className="min-w-0 flex-1">
@@ -592,10 +396,11 @@ export default function ModulesPage() {
       </div>
 
       <ModuleDrawer
-        isLoading={isDrawerSubmitting}
-        module={editingModule}
+        classId={classId}
+        module={editingModule ?? undefined}
+        nextPosition={sortedModules.length + 1}
         onClose={closeDrawer}
-        onSubmit={handleDrawerSubmit}
+        onSuccess={mutate}
         open={drawerOpen}
       />
     </div>

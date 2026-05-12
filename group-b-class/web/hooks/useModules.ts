@@ -6,7 +6,6 @@ import { apiClient } from "@/lib/api-client";
 import type {
   CreateModulePayload,
   Module,
-  ReorderPayload,
   UpdateModulePayload,
 } from "@/types/module";
 
@@ -21,6 +20,10 @@ type ModuleResponse = {
 type Revalidator = () => void;
 
 const moduleRevalidators = new Map<string, Set<Revalidator>>();
+
+function encodePathSegment(value: string): string {
+  return encodeURIComponent(value);
+}
 
 function registerRevalidator(classId: string, revalidator: Revalidator): () => void {
   const listeners = moduleRevalidators.get(classId) ?? new Set<Revalidator>();
@@ -52,11 +55,11 @@ function notifyModulesChanged(classId: string): void {
 }
 
 function getModulesPath(classId: string): string {
-  return `/v1/classes/${classId}/modules`;
+  return `/v1/classes/${encodePathSegment(classId)}/modules`;
 }
 
 function getModulePath(classId: string, moduleId: string): string {
-  return `/v1/classes/${classId}/modules/${moduleId}`;
+  return `/v1/classes/${encodePathSegment(classId)}/modules/${encodePathSegment(moduleId)}`;
 }
 
 export function useModules(
@@ -170,18 +173,18 @@ export function useUpdateModule(
 export function useReorderModules(
   classId: string,
 ): {
-  reorderModules: (payload: ReorderPayload) => Promise<Module[]>;
+  reorderModules: (orderedIds: string[]) => Promise<Module[]>;
   isLoading: boolean;
 } {
   const [pendingCount, setPendingCount] = useState(0);
 
   const reorderModules = useCallback(
-    async (payload: ReorderPayload): Promise<Module[]> => {
+    async (orderedIds: string[]): Promise<Module[]> => {
       setPendingCount((current) => current + 1);
       try {
         const data = await apiClient.patch<ModulesResponse>(
           `${getModulesPath(classId)}/reorder`,
-          payload,
+          { module_ids_in_order: orderedIds },
         );
         notifyModulesChanged(classId);
         return data.modules;

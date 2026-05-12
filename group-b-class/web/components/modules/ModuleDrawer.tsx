@@ -8,12 +8,14 @@ import type { CreateModulePayload, Module, ModuleType, UpdateModulePayload } fro
 type ModuleDrawerProps = {
   classId: string;
   module?: Module;
+  nextPosition?: number;
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
 };
 
 type ValidationErrors = {
+  position: string | null;
   title: string | null;
   durationHours: string | null;
 };
@@ -27,6 +29,8 @@ const MODULE_TYPE_LABELS: Record<ModuleType, string> = {
 };
 
 const DEFAULT_DURATION_HOURS = "1";
+const DEFAULT_POSITION = "1";
+const MAX_MODULES_PER_CLASS = 12;
 
 function XIcon(props: SVGProps<SVGSVGElement>) {
   return (
@@ -52,6 +56,7 @@ function getErrorMessage(isEditMode: boolean): string {
 export function ModuleDrawer({
   classId,
   module,
+  nextPosition,
   open,
   onClose,
   onSuccess,
@@ -59,11 +64,13 @@ export function ModuleDrawer({
   const { createModule, isLoading: isCreating } = useCreateModule(classId);
   const { updateModule, isLoading: isUpdating } = useUpdateModule(classId);
 
+  const [position, setPosition] = useState(DEFAULT_POSITION);
   const [title, setTitle] = useState("");
   const [type, setType] = useState<ModuleType>("theory");
   const [durationHours, setDurationHours] = useState(DEFAULT_DURATION_HOURS);
   const [description, setDescription] = useState("");
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({
+    position: null,
     title: null,
     durationHours: null,
   });
@@ -77,23 +84,35 @@ export function ModuleDrawer({
       return;
     }
 
+    setPosition(module ? String(module.position) : String(nextPosition ?? 1));
     setTitle(module?.title ?? "");
     setType(module?.type ?? "theory");
     setDurationHours(module ? String(module.duration_hours) : DEFAULT_DURATION_HOURS);
     setDescription(module?.description ?? "");
-    setValidationErrors({ title: null, durationHours: null });
+    setValidationErrors({ position: null, title: null, durationHours: null });
     setApiError(null);
-  }, [module, open]);
+  }, [module, nextPosition, open]);
 
   const drawerTitle = useMemo(
     () => (isEditMode ? "Modifier le module" : "Ajouter un module"),
     [isEditMode],
   );
 
+  const maxPosition = useMemo(() => {
+    const candidate = isEditMode ? (nextPosition ?? 2) - 1 : (nextPosition ?? 1);
+    return Math.min(MAX_MODULES_PER_CLASS, Math.max(1, candidate));
+  }, [isEditMode, nextPosition]);
+
   const primaryLabel = useMemo(
     () => (isEditMode ? "Enregistrer" : "Créer"),
     [isEditMode],
   );
+
+  function handlePositionChange(event: ChangeEvent<HTMLInputElement>): void {
+    setPosition(event.target.value);
+    setValidationErrors((current) => ({ ...current, position: null }));
+    setApiError(null);
+  }
 
   function handleTitleChange(event: ChangeEvent<HTMLInputElement>): void {
     setTitle(event.target.value);
@@ -118,9 +137,14 @@ export function ModuleDrawer({
   }
 
   async function handleSubmit(): Promise<void> {
+    const parsedPosition = Number(position);
     const trimmedTitle = title.trim();
     const parsedDuration = Number(durationHours);
     const nextErrors: ValidationErrors = {
+      position:
+        Number.isInteger(parsedPosition) && parsedPosition >= 1 && parsedPosition <= maxPosition
+          ? null
+          : `Position invalide (1–${maxPosition})`,
       title: trimmedTitle ? null : "Le titre est requis",
       durationHours:
         Number.isFinite(parsedDuration) && parsedDuration >= 0.5 && parsedDuration <= 12
@@ -129,7 +153,7 @@ export function ModuleDrawer({
     };
 
     setValidationErrors(nextErrors);
-    if (nextErrors.title || nextErrors.durationHours) {
+    if (nextErrors.position || nextErrors.title || nextErrors.durationHours) {
       return;
     }
 
@@ -140,14 +164,20 @@ export function ModuleDrawer({
     try {
       if (module) {
         const payload: UpdateModulePayload = {
-          title: trimmedTitle,
-          type,
-          duration_hours: parsedDuration,
-          description: descriptionValue,
+          ...(parsedPosition !== module.position ? { position: parsedPosition } : {}),
+          ...(trimmedTitle !== module.title ? { title: trimmedTitle } : {}),
+          ...(type !== module.type ? { type } : {}),
+          ...(parsedDuration !== module.duration_hours ? { duration_hours: parsedDuration } : {}),
+          ...(descriptionValue !== (module.description ?? "") ? { description: descriptionValue } : {}),
         };
+        if (Object.keys(payload).length === 0) {
+          onClose();
+          return;
+        }
         await updateModule(module.id, payload);
       } else {
         const payload: CreateModulePayload = {
+          position: parsedPosition,
           title: trimmedTitle,
           type,
           duration_hours: parsedDuration,
@@ -196,12 +226,34 @@ export function ModuleDrawer({
 
           <div className="flex-1 overflow-y-auto px-6 pb-6">
             {apiError ? (
-              <div className="mb-4 rounded-lg border border-[#EF4444] bg-[#FEF2F2] p-3 text-sm text-[#EF4444]">
+              <div className="mb-4 rounded-lg border border-[#EF4444] bg-white p-3 text-sm text-[#EF4444]">
                 {apiError}
               </div>
             ) : null}
 
             <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[#1D1D1B]" htmlFor="module-position">
+                  Position
+                </label>
+                <input
+                  id="module-position"
+                  className="h-[44px] w-full rounded-lg border border-[#E5E7EB] bg-white px-4 text-[#1D1D1B] focus:border-[#E6332A] focus:outline-none focus:ring-1 focus:ring-[#E6332A]"
+                  max={maxPosition}
+                  min="1"
+                  onChange={handlePositionChange}
+                  step="1"
+                  type="number"
+                  value={position}
+                />
+                {validationErrors.position ? (
+                  <p className="mt-1 text-xs text-[#EF4444]">{validationErrors.position}</p>
+                ) : null}
+                <p className="mt-1 text-xs text-[#888888]">
+                  Modifie l'ordre de ce module dans la class
+                </p>
+              </div>
+
               <div>
                 <label className="mb-2 block text-sm font-medium text-[#1D1D1B]" htmlFor="module-title">
                   Titre *
