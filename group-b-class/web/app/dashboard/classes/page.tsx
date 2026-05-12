@@ -11,6 +11,7 @@ import {
   MapPin,
   MonitorPlay,
   Sparkles,
+  Plus,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
@@ -287,6 +288,13 @@ export default function DashboardClassesPage() {
             {subtitle}
           </p>
         </div>
+
+        <Link href="/dashboard/classes/new">
+          <Button className="flex items-center gap-2 px-6">
+            <Plus className="h-4 w-4" />
+            Créer une Mira Class
+          </Button>
+        </Link>
       </header>
 
       {loading && <ClassesSkeleton />}
