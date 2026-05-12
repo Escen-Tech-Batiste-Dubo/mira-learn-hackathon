@@ -6,8 +6,9 @@ from fastapi.security import HTTPBearer
 from app.core.auth import AuthenticatedUser, require_role
 from app.core.db import get_db
 from app.core.responses import success_response
-from app.schemas.mira_class import MiraClassListRead, MiraClassRead, MiraClassCreate
+from app.schemas.mira_class import MiraClassListRead, MiraClassRead, MiraClassCreate, MiraClassUpdate
 from app.services import mentor_profile_service, mira_class_service
+from uuid import UUID
 
 router = APIRouter()
 security = HTTPBearer()
@@ -62,3 +63,36 @@ async def create_mira_class(
         data=payload.model_dump(mode="json"),
         message="Mira Class créée avec succès",
     )
+
+
+@router.put("/{class_id}", summary="Modifier une Mira Class")
+async def update_class(
+    class_id: UUID,
+    body: MiraClassUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: AuthenticatedUser = Depends(require_role("mentor")),
+    _auth = Depends(security)
+) -> dict:
+    updated = await mira_class_service.update_mira_class(
+        db=db, class_id=class_id, mentor_user_id=user.user_id, body=body
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Mira Class non trouvée")
+    
+    return success_response(data=MiraClassRead.model_validate(updated).model_dump(mode="json"))
+
+
+@router.delete("/{class_id}", status_code=status.HTTP_200_OK, summary="Supprimer une Mira Class")
+async def delete_class(
+    class_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user: AuthenticatedUser = Depends(require_role("mentor")),
+    _auth = Depends(security)
+) -> dict:
+    deleted = await mira_class_service.delete_mira_class(
+        db=db, class_id=class_id, mentor_user_id=user.user_id
+    )
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Mira Class non trouvée ou non autorisée")
+    
+    return success_response(message="Mira Class supprimée avec succès")

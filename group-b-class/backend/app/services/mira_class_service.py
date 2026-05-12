@@ -7,7 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.mira_class import MiraClass
 from app.models.skill import Skill
-from app.schemas.mira_class import MiraClassCreate
+from app.schemas.mira_class import MiraClassCreate, MiraClassUpdate
+from uuid import UUID
+from typing import Optional
 
 
 async def list_classes_for_mentor(
@@ -74,3 +76,49 @@ async def _ensure_skills_exist(db: AsyncSession, skill_ids: list[str]) -> None:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Une ou plusieurs skills ne sont pas disponibles.",
         )
+
+
+async def update_mira_class(
+    db: AsyncSession, 
+    class_id: UUID, 
+    mentor_user_id: str, 
+    body: MiraClassUpdate
+) -> Optional[MiraClass]:
+    stmt = select(MiraClass).where(
+        MiraClass.id == class_id, 
+        MiraClass.mentor_user_id == mentor_user_id
+    )
+    result = await db.execute(stmt)
+    instance = result.scalar_one_or_none()
+    
+    if not instance:
+        return None
+
+    update_data = body.model_dump(exclude_unset=True)
+    if "delivery_format" in update_data:
+        instance.format_envisaged = update_data.pop("delivery_format")
+    if "skill_ids" in update_data:
+        ids_as_strings = [str(uid) for uid in update_data.pop("skill_ids")]
+        instance.skills_taught = ids_as_strings
+    
+    for key, value in update_data.items():
+        setattr(instance, key, value)
+
+    await db.commit()
+    await db.refresh(instance)
+    return instance
+
+async def delete_mira_class(db: AsyncSession, class_id: UUID, mentor_user_id: str) -> bool:
+    stmt = select(MiraClass).where(
+        MiraClass.id == class_id, 
+        MiraClass.mentor_user_id == str(mentor_user_id)
+    )
+    result = await db.execute(stmt)
+    instance = result.scalar_one_or_none()
+    
+    if not instance:
+        return False
+
+    await db.delete(instance)
+    await db.commit()
+    return True

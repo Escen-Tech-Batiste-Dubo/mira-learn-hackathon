@@ -1,6 +1,6 @@
 """Pydantic schemas for Mira Classes."""
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -89,3 +89,9 @@ class MiraClassRead(BaseModel):
 class MiraClassListRead(BaseModel):
     items: list[MiraClassRead]
     total: int
+
+class MiraClassUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=3)
+    description: Optional[str] = Field(None, min_length=20)
+    skill_ids: Optional[List[UUID]] = None
+    delivery_format: Optional[DeliveryFormat] = None
