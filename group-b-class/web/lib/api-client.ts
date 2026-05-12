@@ -55,7 +55,7 @@ export class ApiError extends Error {
 }
 
 async function request<T>(
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PATCH" | "DELETE" | "PUT",
   path: string,
   body?: unknown,
 ): Promise<T> {
@@ -107,4 +107,5 @@ export const apiClient = {
   post: <T = unknown>(path: string, body?: unknown) => request<T>("POST", path, body),
   patch: <T = unknown>(path: string, body?: unknown) => request<T>("PATCH", path, body),
   delete: <T = unknown>(path: string) => request<T>("DELETE", path),
+  put: <T = unknown>(path: string, body?: unknown) => request<T>("PUT", path, body),
 };

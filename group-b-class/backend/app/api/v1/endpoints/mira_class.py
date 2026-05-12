@@ -2,11 +2,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.security import HTTPBearer
+from sqlalchemy import select
 
 from app.core.auth import AuthenticatedUser, require_role
 from app.core.db import get_db
 from app.core.responses import success_response
 from app.schemas.mira_class import MiraClassListRead, MiraClassRead, MiraClassCreate, MiraClassUpdate
+from app.models.mira_class import MiraClass
 from app.services import mentor_profile_service, mira_class_service
 from uuid import UUID
 
@@ -96,3 +98,24 @@ async def delete_class(
         raise HTTPException(status_code=404, detail="Mira Class non trouvée ou non autorisée")
     
     return success_response(message="Mira Class supprimée avec succès")
+
+
+@router.get("/{class_id}", summary="Récupérer le détail d'une Mira Class")
+async def get_class_detail(
+    class_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    user: AuthenticatedUser = Depends(require_role("mentor")),
+    _auth = Depends(security)
+) -> dict:
+    """Récupère une classe spécifique appartenant au mentor."""
+    stmt = select(MiraClass).where(
+        MiraClass.id == class_id,
+        MiraClass.mentor_user_id == user.user_id
+    )
+    result = await db.execute(stmt)
+    instance = result.scalar_one_or_none()
+
+    if not instance:
+        raise HTTPException(status_code=404, detail="Mira Class non trouvée")
+
+    return success_response(data=MiraClassRead.model_validate(instance).model_dump(mode="json"))
