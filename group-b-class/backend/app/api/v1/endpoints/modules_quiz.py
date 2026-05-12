@@ -4,8 +4,6 @@ Routes QCM par module — `contracts/group-b-class/mira_class_module_quiz.md`.
 - POST /v1/modules/{module_id}/quiz/generate — génération IA (mentor)
 - GET  /v1/modules/{module_id}/quiz — détail mentor (404 si aucun quiz)
 """
-import logging
-
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +15,6 @@ from app.schemas.quiz import MiraClassModuleQuizGenerateRequest
 from app.services import quiz_service
 
 router = APIRouter()
-_log = logging.getLogger(__name__)
 
 
 @router.get(
@@ -47,12 +44,5 @@ async def generate_module_quiz(
     user: AuthenticatedUser = Depends(require_role("mentor")),
 ) -> dict:
     """Crée ou remplace un quiz `draft` pour le module (1 max actif)."""
-    _log.info(
-        "[quiz-gen] 1/endpoint POST generate entree module_id=%s mentor=%s… questions=%s",
-        module_id,
-        (user.user_id or "")[:8],
-        body.question_count,
-    )
     detail = await quiz_service.generate_quiz_for_module(db, module_id, user.user_id, body)
-    _log.info("[quiz-gen] 9/endpoint POST generate OK quiz_id=%s", detail.quiz.id)
     return success_response(data=detail.model_dump(mode="json"))

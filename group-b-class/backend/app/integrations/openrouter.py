@@ -114,9 +114,6 @@ class LLMClient:
         if tools is not None:
             payload["tools"] = tools
 
-        model_name = payload["model"]
-        logger.info("[quiz-gen] 5b/openrouter POST chat/completions model=%s", model_name)
-
         async with httpx.AsyncClient(timeout=self.DEFAULT_TIMEOUT) as client:
             try:
                 response = await client.post(
@@ -132,16 +129,11 @@ class LLMClient:
                 )
                 response.raise_for_status()
                 data = response.json()
-                logger.info(
-                    "[quiz-gen] 5c/openrouter HTTP %s id=%s",
-                    response.status_code,
-                    (data.get("id") or "")[:20],
-                )
             except httpx.HTTPStatusError as exc:
                 logger.error(
-                    "[quiz-gen] openrouter HTTPStatusError status=%s body=%s",
+                    "OpenRouter call failed: %s — %s",
                     exc.response.status_code,
-                    exc.response.text[:500],
+                    exc.response.text,
                     exc_info=True,
                 )
                 raise AppException(
@@ -150,7 +142,7 @@ class LLMClient:
                     data={"provider_status": exc.response.status_code},
                 ) from exc
             except httpx.HTTPError as exc:
-                logger.error("[quiz-gen] openrouter HTTPError (reseau/timeout) : %s", exc, exc_info=True)
+                logger.error("OpenRouter network error", exc_info=True)
                 raise AppException(
                     message="LLM provider unreachable",
                     status_code=503,

@@ -25,7 +25,6 @@ MIGRATION HINT (post-hackathon) :
 
     Voir `MIGRATION_GUIDE.md` section "Auth custom JWT → edge-gateway scopes".
 """
-import json
 import logging
 from typing import Any, Literal
 
@@ -49,7 +48,6 @@ async def _fetch_jwks() -> dict[str, Any]:
     """
     global _jwks_cache
     if _jwks_cache is not None:
-        logger.info("[auth-jwks] cache hit (pas de requete HTTP)")
         return _jwks_cache
 
     url = settings.supabase_jwks_url()
@@ -59,43 +57,19 @@ async def _fetch_jwks() -> dict[str, Any]:
         "apikey": settings.SUPABASE_ANON_KEY,
         "Authorization": f"Bearer {settings.SUPABASE_ANON_KEY}",
     }
-    logger.info("[auth-jwks] GET %s", url)
     async with httpx.AsyncClient(timeout=5.0) as client:
-        try:
-            response = await client.get(url, headers=headers)
-            logger.info("[auth-jwks] reponse HTTP %s", response.status_code)
-            response.raise_for_status()
-            _jwks_cache = response.json()
-        except httpx.HTTPStatusError as exc:
-            logger.error(
-                "[auth-jwks] echec HTTP %s body=%s",
-                exc.response.status_code,
-                exc.response.text[:400],
-            )
-            raise
-        except httpx.HTTPError as exc:
-            logger.error("[auth-jwks] erreur reseau/timeout : %s", exc)
-            raise
-        except json.JSONDecodeError as exc:
-            logger.error("[auth-jwks] corps JWKS non JSON : %s", exc)
-            raise
-
-    n_keys = len(_jwks_cache.get("keys", [])) if isinstance(_jwks_cache, dict) else 0
-    logger.info("[auth-jwks] OK charge %s cle(s)", n_keys)
-    return _jwks_cache
+        response = await client.get(url, headers=headers)
+        response.raise_for_status()
+        _jwks_cache = response.json()
+        return _jwks_cache
 
 
 async def _decode_jwt(token: str) -> dict[str, Any]:
     """Décode + valide un JWT Supabase via JWKS (RS256 ou ES256 selon le projet)."""
-    logger.info("[auth] decode_jwt (JWKS + signature)")
     try:
         jwks = await _fetch_jwks()
     except httpx.HTTPError as exc:
-        logger.error(
-            "[auth] JWKS indisponible -> HTTP 503 client (voir logs [auth-jwks] ci-dessus). Err: %s",
-            exc,
-            exc_info=True,
-        )
+        logger.error("Failed to fetch JWKS: %s", exc, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Auth service temporarily unavailable",
@@ -111,15 +85,13 @@ async def _decode_jwt(token: str) -> dict[str, Any]:
         if not key:
             raise JWTError("Signing key not found in JWKS")
 
-        claims = jwt.decode(
+        return jwt.decode(
             token,
             key=key,
             algorithms=["RS256", "ES256"],
             audience="authenticated",
             options={"verify_aud": True},
         )
-        logger.info("[auth] JWT OK sub=%s…", str(claims.get("sub", ""))[:8])
-        return claims
     except JWTError as exc:
         logger.warning("JWT validation failed: %s", exc)
         raise HTTPException(
@@ -165,7 +137,6 @@ async def require_auth(authorization: str = Header(...)) -> AuthenticatedUser:
         )
 
     token = authorization[len("Bearer "):]
-    logger.info("[auth] require_auth Bearer recu (longueur token=%s)", len(token))
     payload = await _decode_jwt(token)
 
     user_id = payload.get("sub")
@@ -205,17 +176,10 @@ def require_role(*allowed_roles: UserRole):
 
     async def _check(user: AuthenticatedUser = __import__("fastapi").Depends(require_auth)) -> AuthenticatedUser:
         if user.role not in allowed_roles:
-            logger.warning(
-                "[auth] require_role refuse role=%r (autorises=%s) user=%s…",
-                user.role,
-                allowed_roles,
-                (user.user_id or "")[:8],
-            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Forbidden: requires role in {allowed_roles}",
             )
-        logger.info("[auth] require_role OK role=%r", user.role)
         return user
 
     return _check
