@@ -34,7 +34,7 @@ class TargetCity(BaseModel):
 class MiraClassCreate(BaseModel):
     title: str = Field(..., min_length=3, max_length=200)
     description: str = Field(..., min_length=20, max_length=4000)
-    skill_ids: list[UUID] = Field(..., min_length=1, max_length=8)
+    skill_ids: list[UUID] = Field(..., min_length=1, max_length=5)
     delivery_format: DeliveryFormat
 
     @field_validator("title", "description")
