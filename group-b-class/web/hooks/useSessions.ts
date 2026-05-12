@@ -30,9 +30,9 @@ export function useSession(sessionId: string) {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get(`/v1/sessions/${sessionId}`);
-      if (response.status === "success" && response.data) {
-        setSession(response.data);
+      const data = await apiClient.get<Session>(`/v1/classes/sessions/${sessionId}`);
+      if (data) {
+        setSession(data);
       }
     } catch (err) {
       setError("Erreur lors du chargement de la session");
@@ -60,9 +60,9 @@ export function useSessions(classId?: string) {
         url = `/v1/classes/${classId}/sessions`;
       }
 
-      const response = await apiClient.get(url);
-      if (response.status === "success" && Array.isArray(response.data)) {
-        setSessions(response.data);
+      const data = await apiClient.get<Session[]>(url);
+      if (Array.isArray(data)) {
+        setSessions(data);
       }
     } catch (err) {
       setError("Erreur lors du chargement des sessions");
@@ -84,13 +84,10 @@ export function useCreateSession() {
       try {
         setLoading(true);
         setError(null);
-        const response = await apiClient.post(`/v1/classes/${classId}/sessions`, data);
-        if (response.status === "success") {
-          return response.data;
-        }
-        throw new Error(response.message || "Erreur lors de la création");
+        const result = await apiClient.post<Session>(`/v1/classes/${classId}/sessions`, data);
+        return result;
       } catch (err: any) {
-        const errorMsg = err.response?.data?.message || "Erreur lors de la création de la session";
+        const errorMsg = err.message || "Erreur lors de la création de la session";
         setError(errorMsg);
         throw err;
       } finally {
@@ -111,14 +108,10 @@ export function useUpdateSession() {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.patch(`/v1/sessions/${sessionId}`, data);
-      if (response.status === "success") {
-        return response.data;
-      }
-      throw new Error(response.message || "Erreur lors de la mise à jour");
+      const result = await apiClient.patch<Session>(`/v1/classes/sessions/${sessionId}`, data);
+      return result;
     } catch (err: any) {
-      const errorMsg =
-        err.response?.data?.message || "Erreur lors de la mise à jour de la session";
+      const errorMsg = err.message || "Erreur lors de la mise à jour de la session";
       setError(errorMsg);
       throw err;
     } finally {
@@ -137,14 +130,10 @@ export function useDeleteSession() {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.delete(`/v1/sessions/${sessionId}`);
-      if (response.status === "success") {
-        return true;
-      }
-      throw new Error(response.message || "Erreur lors de la suppression");
+      await apiClient.delete(`/v1/classes/sessions/${sessionId}`);
+      return true;
     } catch (err: any) {
-      const errorMsg =
-        err.response?.data?.message || "Erreur lors de la suppression de la session";
+      const errorMsg = err.message || "Erreur lors de la suppression de la session";
       setError(errorMsg);
       throw err;
     } finally {

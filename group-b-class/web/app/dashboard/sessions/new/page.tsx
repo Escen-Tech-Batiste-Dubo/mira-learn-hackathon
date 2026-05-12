@@ -3,48 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/Button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/api";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { format } from "date-fns";
-
-const formSchema = z.object({
-  class_id: z.string().min(1, "Veuillez sélectionner une classe"),
-  type: z.enum(["physical", "virtual", "hybrid"]),
-  location_address: z.string().optional(),
-  location_city: z.string().optional(),
-  location_country: z.string().optional(),
-  capacity: z.number().min(1).max(50),
-  price_cents: z.number().min(0),
-  starts_at: z.string().min(1, "Date/heure de début requise"),
-  ends_at: z.string().min(1, "Date/heure de fin requise"),
-  waitlist_enabled: z.boolean().default(true),
-  waitlist_max_size: z.number().min(0),
-});
-
-type FormValues = z.infer<typeof formSchema>;
 
 export default function CreateSessionPage() {
   const router = useRouter();
@@ -52,16 +15,20 @@ export default function CreateSessionPage() {
   const [classes, setClasses] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedType, setSelectedType] = useState<"physical" | "virtual" | "hybrid">("virtual");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      type: "virtual",
-      capacity: 10,
-      price_cents: 0,
-      waitlist_enabled: true,
-      waitlist_max_size: 20,
-    },
+  const [formData, setFormData] = useState({
+    class_id: "",
+    type: "virtual",
+    location_address: "",
+    location_city: "",
+    location_country: "",
+    capacity: 10,
+    price_cents: 0,
+    starts_at: "",
+    ends_at: "",
+    waitlist_enabled: true,
+    waitlist_max_size: 20,
   });
 
   useEffect(() => {
@@ -76,44 +43,54 @@ export default function CreateSessionPage() {
 
   const fetchClasses = async () => {
     try {
-      const response = await apiClient.get("/v1/me/classes");
-      if (response.data && Array.isArray(response.data)) {
-        setClasses(response.data);
+      const response = await apiClient.get<any[]>("/v1/me/classes");
+      if (Array.isArray(response)) {
+        setClasses(response);
       }
     } catch (err) {
       console.error("Failed to fetch classes:", err);
     }
   };
 
-  const onSubmit = async (values: FormValues) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.class_id) {
+      newErrors.class_id = "Veuillez sélectionner une classe";
+    }
+    if (formData.type !== "virtual" && !formData.location_address) {
+      newErrors.location_address = "L'adresse est requise pour les sessions en présentiel";
+    }
+    if (!formData.starts_at) {
+      newErrors.starts_at = "Date de début requise";
+    }
+    if (!formData.ends_at) {
+      newErrors.ends_at = "Date de fin requise";
+    }
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
     try {
       setIsSubmitting(true);
 
-      // Valider que location_address est requis pour physical/hybrid
-      if (values.type !== "virtual" && !values.location_address) {
-        form.setError("location_address", {
-          type: "manual",
-          message: "L'adresse est requise pour les sessions en présentiel",
-        });
-        return;
-      }
-
       const payload = {
-        ...values,
-        price_cents: Math.floor(values.price_cents * 100), // Convert to cents
+        ...formData,
+        price_cents: Math.floor(formData.price_cents * 100),
       };
 
-      const response = await apiClient.post(
-        `/v1/classes/${values.class_id}/sessions`,
+      const response = await apiClient.post<any>(
+        `/v1/classes/${formData.class_id}/sessions`,
         payload
       );
 
-      if (response.status === "success") {
-        router.push(`/dashboard/sessions/${response.data.id}`);
+      if (response && response.id) {
+        router.push(`/dashboard/sessions/${response.id}`);
       }
     } catch (err) {
       console.error("Failed to create session:", err);
-      // Show error toast or message
+      setErrors({ submit: "Erreur lors de la création de la session" });
     } finally {
       setIsSubmitting(false);
     }
@@ -127,7 +104,7 @@ export default function CreateSessionPage() {
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Créer une session</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-[var(--muted-foreground)] mt-2">
           Ajoutez une nouvelle session à l'une de vos classes
         </p>
       </div>
@@ -140,245 +117,168 @@ export default function CreateSessionPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Classe */}
-              <FormField
-                control={form.control}
-                name="class_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Classe</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner une classe" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {classes.map((cls) => (
-                          <SelectItem key={cls.id} value={cls.id}>
-                            {cls.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Classe */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Classe</label>
+              <select
+                value={formData.class_id}
+                onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
+                className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--color-card)] px-3 py-2 text-base"
+              >
+                <option value="">Sélectionner une classe</option>
+                {classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.title}
+                  </option>
+                ))}
+              </select>
+              {errors.class_id && <p className="text-sm text-red-500">{errors.class_id}</p>}
+            </div>
 
-              {/* Type de session */}
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Format de session</FormLabel>
-                    <Select
-                      onValueChange={(value: any) => {
-                        field.onChange(value);
-                        setSelectedType(value);
-                      }}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="virtual">En ligne (Zoom, Meet, etc.)</SelectItem>
-                        <SelectItem value="physical">En présentiel</SelectItem>
-                        <SelectItem value="hybrid">Hybride (présentiel + en ligne)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            {/* Type de session */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Format de session</label>
+              <select
+                value={formData.type}
+                onChange={(e) => {
+                  setFormData({ ...formData, type: e.target.value as any });
+                  setSelectedType(e.target.value as any);
+                }}
+                className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--color-card)] px-3 py-2 text-base"
+              >
+                <option value="virtual">En ligne (Zoom, Meet, etc.)</option>
+                <option value="physical">En présentiel</option>
+                <option value="hybrid">Hybride (présentiel + en ligne)</option>
+              </select>
+            </div>
 
-              {/* Adresse (si physical/hybrid) */}
-              {selectedType !== "virtual" && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="location_address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Adresse</FormLabel>
-                        <FormControl>
-                          <Input placeholder="10 Rue de la Paix, Paris" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Adresse complète du lieu
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+            {/* Adresse (si physical/hybrid) */}
+            {selectedType !== "virtual" && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Adresse</label>
+                  <Input
+                    placeholder="10 Rue de la Paix, Paris"
+                    value={formData.location_address}
+                    onChange={(e) => setFormData({ ...formData, location_address: e.target.value })}
                   />
+                  <p className="text-xs text-[var(--muted-foreground)]">Adresse complète du lieu</p>
+                  {errors.location_address && (
+                    <p className="text-sm text-red-500">{errors.location_address}</p>
+                  )}
+                </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="location_city"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Ville</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Paris" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="location_country"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Pays</FormLabel>
-                          <FormControl>
-                            <Input placeholder="France" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Ville</label>
+                    <Input
+                      placeholder="Paris"
+                      value={formData.location_city}
+                      onChange={(e) => setFormData({ ...formData, location_city: e.target.value })}
                     />
                   </div>
-                </>
-              )}
 
-              {/* Capacité */}
-              <FormField
-                control={form.control}
-                name="capacity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Capacité maximale</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="50"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormDescription>Entre 1 et 50 participants</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Pays</label>
+                    <Input
+                      placeholder="France"
+                      value={formData.location_country}
+                      onChange={(e) => setFormData({ ...formData, location_country: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Capacité */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Capacité maximale</label>
+              <Input
+                type="number"
+                min="1"
+                max="50"
+                value={formData.capacity}
+                onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
               />
+              <p className="text-xs text-[var(--muted-foreground)]">Entre 1 et 50 participants</p>
+            </div>
 
-              {/* Prix */}
-              <FormField
-                control={form.control}
-                name="price_cents"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Prix par participant (EUR)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormDescription>Laisser à 0 pour gratuit</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            {/* Prix */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Prix par participant (EUR)</label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.price_cents}
+                onChange={(e) => setFormData({ ...formData, price_cents: parseFloat(e.target.value) })}
               />
+              <p className="text-xs text-[var(--muted-foreground)]">Laisser à 0 pour gratuit</p>
+            </div>
 
-              {/* Dates et heures */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="starts_at"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Début</FormLabel>
-                      <FormControl>
-                        <Input type="datetime-local" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+            {/* Dates et heures */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Début</label>
+                <Input
+                  type="datetime-local"
+                  value={formData.starts_at}
+                  onChange={(e) => setFormData({ ...formData, starts_at: e.target.value })}
                 />
-
-                <FormField
-                  control={form.control}
-                  name="ends_at"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Fin</FormLabel>
-                      <FormControl>
-                        <Input type="datetime-local" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {errors.starts_at && <p className="text-sm text-red-500">{errors.starts_at}</p>}
               </div>
 
-              {/* Waitlist */}
-              <FormField
-                control={form.control}
-                name="waitlist_enabled"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="waitlist"
-                        checked={field.value}
-                        onChange={field.onChange}
-                      />
-                      <label htmlFor="waitlist" className="font-medium cursor-pointer">
-                        Activer la liste d'attente
-                      </label>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {form.watch("waitlist_enabled") && (
-                <FormField
-                  control={form.control}
-                  name="waitlist_max_size"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Taille maximale liste d'attente</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Fin</label>
+                <Input
+                  type="datetime-local"
+                  value={formData.ends_at}
+                  onChange={(e) => setFormData({ ...formData, ends_at: e.target.value })}
                 />
-              )}
-
-              {/* Buttons */}
-              <div className="flex gap-4">
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Création..." : "Créer la session"}
-                </Button>
-                <Link href="/dashboard/sessions">
-                  <Button variant="outline">Annuler</Button>
-                </Link>
+                {errors.ends_at && <p className="text-sm text-red-500">{errors.ends_at}</p>}
               </div>
-            </form>
-          </Form>
+            </div>
+
+            {/* Waitlist */}
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="waitlist"
+                  checked={formData.waitlist_enabled}
+                  onChange={(e) => setFormData({ ...formData, waitlist_enabled: e.target.checked })}
+                />
+                <label htmlFor="waitlist" className="text-sm font-medium cursor-pointer">
+                  Activer la liste d'attente
+                </label>
+              </div>
+            </div>
+
+            {formData.waitlist_enabled && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Taille maximale liste d'attente</label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={formData.waitlist_max_size}
+                  onChange={(e) => setFormData({ ...formData, waitlist_max_size: parseInt(e.target.value) })}
+                />
+              </div>
+            )}
+
+            {errors.submit && <p className="text-sm text-red-500">{errors.submit}</p>}
+
+            {/* Buttons */}
+            <div className="flex gap-4">
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Création..." : "Créer la session"}
+              </Button>
+              <Link href="/dashboard/sessions">
+                <Button variant="outline">Annuler</Button>
+              </Link>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>

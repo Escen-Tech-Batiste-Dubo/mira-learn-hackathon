@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/Button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,11 +14,9 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui/AlertDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useSession, useUpdateSession, useDeleteSession } from "@/hooks/useSessions";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 
 export default function SessionDetailPage() {
   const params = useParams();
@@ -70,6 +68,21 @@ export default function SessionDetailPage() {
     return types[type] || type;
   };
 
+  const formatDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleString("fr-FR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   if (authLoading) {
     return <div className="p-8 text-center">Chargement...</div>;
   }
@@ -94,11 +107,11 @@ export default function SessionDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Détails de la session</h1>
           <div className="flex items-center gap-2 mt-2">
-            <p className="text-muted-foreground">Session</p>
+            <p className="text-[var(--muted-foreground)]">Session</p>
             {getStatusBadge(session.status)}
           </div>
         </div>
@@ -139,15 +152,15 @@ export default function SessionDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Type */}
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Format</p>
-                <p className="text-base">{getTypeDisplay(session.type)}</p>
-              </div>
+               <div>
+                 <p className="text-sm font-medium text-[var(--muted-foreground)]">Format</p>
+                 <p className="text-base">{getTypeDisplay(session.type)}</p>
+               </div>
 
-              {/* Location */}
-              {session.type !== "virtual" && (
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Localisation</p>
+               {/* Location */}
+               {session.type !== "virtual" && (
+                 <div>
+                   <p className="text-sm font-medium text-[var(--muted-foreground)]">Localisation</p>
                   <p className="text-base">
                     {session.location_address}
                     <br />
@@ -156,29 +169,28 @@ export default function SessionDetailPage() {
                 </div>
               )}
 
-              {/* Dates */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Début</p>
-                  <p className="text-base">
-                    {format(new Date(session.starts_at), "dd MMM yyyy HH:mm", { locale: fr })}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Fin</p>
-                  <p className="text-base">
-                    {format(new Date(session.ends_at), "dd MMM yyyy HH:mm", { locale: fr })}
-                  </p>
-                </div>
-              </div>
+               {/* Dates */}
+               <div className="grid grid-cols-2 gap-4">
+                 <div>
+                   <p className="text-sm font-medium text-[var(--muted-foreground)]">Début</p>
+                   <p className="text-base">
+                     {formatDate(session.starts_at)}
+                   </p>
+                 </div>
+                 <div>
+                   <p className="text-sm font-medium text-[var(--muted-foreground)]">Fin</p>
+                   <p className="text-base">
+                     {formatDate(session.ends_at)}
+                   </p>
+                 </div>
+               </div>
 
-              {/* Price */}
-              {session.price_cents > 0 && (
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Prix par participant</p>
-                  <p className="text-base">€{(session.price_cents / 100).toFixed(2)}</p>
-                </div>
-              )}
+               {session.price_cents > 0 && (
+                 <div>
+                   <p className="text-sm font-medium text-[var(--muted-foreground)]">Prix par participant</p>
+                   <p className="text-base">€{(session.price_cents / 100).toFixed(2)}</p>
+                 </div>
+               )}
             </CardContent>
           </Card>
 
@@ -191,22 +203,22 @@ export default function SessionDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Capacité</p>
-                  <p className="text-2xl font-bold">{session.capacity}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Inscrits</p>
-                  <p className={`text-2xl font-bold ${isFull ? "text-destructive" : ""}`}>
-                    {session.enrolment_count}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Waitlist</p>
-                  <p className="text-2xl font-bold">{session.waitlist_count}</p>
-                </div>
-              </div>
+               <div className="grid grid-cols-3 gap-4">
+                 <div>
+                   <p className="text-sm font-medium text-[var(--muted-foreground)]">Capacité</p>
+                   <p className="text-2xl font-bold">{session.capacity}</p>
+                 </div>
+                 <div>
+                   <p className="text-sm font-medium text-[var(--muted-foreground)]">Inscrits</p>
+                   <p className={`text-2xl font-bold ${isFull ? "text-destructive" : ""}`}>
+                     {session.enrolment_count}
+                   </p>
+                 </div>
+                 <div>
+                   <p className="text-sm font-medium text-[var(--muted-foreground)]">Waitlist</p>
+                   <p className="text-2xl font-bold">{session.waitlist_count}</p>
+                 </div>
+               </div>
 
               {isFull && (
                 <div className="rounded-lg bg-yellow-50 p-3 text-sm text-yellow-800">
@@ -240,14 +252,14 @@ export default function SessionDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase">Taux d'occupation</p>
+              <p className="text-xs font-medium text-[var(--muted-foreground)] uppercase">Taux d'occupation</p>
               <p className="text-3xl font-bold">
                 {Math.round((session.enrolment_count / session.capacity) * 100)}%
               </p>
             </div>
 
             <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase">Places restantes</p>
+              <p className="text-xs font-medium text-[var(--muted-foreground)] uppercase">Places restantes</p>
               <p className="text-3xl font-bold text-blue-600">
                 {Math.max(0, session.capacity - session.enrolment_count)}
               </p>
@@ -255,22 +267,22 @@ export default function SessionDetailPage() {
 
             {session.waitlist_count > 0 && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase">En attente</p>
+                <p className="text-xs font-medium text-[var(--muted-foreground)] uppercase">En attente</p>
                 <p className="text-3xl font-bold text-orange-600">{session.waitlist_count}</p>
               </div>
             )}
 
             <div className="pt-2 border-t space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase">Métadonnées</p>
-              <div className="text-xs space-y-1">
-                <p>
-                  <strong>Créée:</strong> {format(new Date(session.created_at), "dd MMM yyyy", { locale: fr })}
-                </p>
-                <p>
-                  <strong>MàJ:</strong> {format(new Date(session.updated_at), "dd MMM yyyy", { locale: fr })}
-                </p>
-              </div>
-            </div>
+               <p className="text-xs font-medium text-[var(--muted-foreground)] uppercase">Métadonnées</p>
+               <div className="text-xs space-y-1">
+                 <p>
+                   <strong>Créée:</strong> {new Date(session.created_at).toLocaleDateString("fr-FR")}
+                 </p>
+                 <p>
+                   <strong>MàJ:</strong> {new Date(session.updated_at).toLocaleDateString("fr-FR")}
+                 </p>
+               </div>
+             </div>
           </CardContent>
         </Card>
       </div>

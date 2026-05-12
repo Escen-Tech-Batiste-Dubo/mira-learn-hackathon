@@ -1,9 +1,7 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import Link from "next/link";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 
 interface SessionCardProps {
   id: string;
@@ -35,6 +33,20 @@ export function SessionCard({
   waitlist_count,
   price_cents,
 }: SessionCardProps) {
+  const formatDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleString("fr-FR", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch (e) {
+      return dateStr;
+    }
+  };
   const getTypeDisplay = () => {
     const types: Record<string, { label: string; icon: string }> = {
       physical: { label: "Présentiel", icon: "📍" },
@@ -75,46 +87,46 @@ export function SessionCard({
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Location */}
-        <div className="text-sm">
-          <p className="font-medium text-muted-foreground">Lieu</p>
-          <p>
-            {type === "virtual"
-              ? "Session en ligne"
-              : `${location_city || "À définir"}${location_country ? `, ${location_country}` : ""}`}
-          </p>
-        </div>
+         <div className="text-sm">
+           <p className="font-medium text-[var(--muted-foreground)]">Lieu</p>
+           <p>
+             {type === "virtual"
+               ? "Session en ligne"
+               : `${location_city || "À définir"}${location_country ? `, ${location_country}` : ""}`}
+           </p>
+         </div>
 
-        {/* Dates */}
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div>
-            <p className="font-medium text-muted-foreground">Début</p>
-            <p>{format(new Date(starts_at), "dd MMM yyyy HH:mm", { locale: fr })}</p>
-          </div>
-          <div>
-            <p className="font-medium text-muted-foreground">Fin</p>
-            <p>{format(new Date(ends_at), "dd MMM yyyy HH:mm", { locale: fr })}</p>
-          </div>
-        </div>
+         {/* Dates */}
+         <div className="grid grid-cols-2 gap-2 text-sm">
+           <div>
+             <p className="font-medium text-[var(--muted-foreground)]">Début</p>
+             <p>{formatDate(starts_at)}</p>
+           </div>
+           <div>
+             <p className="font-medium text-[var(--muted-foreground)]">Fin</p>
+             <p>{formatDate(ends_at)}</p>
+           </div>
+         </div>
 
-        {/* Capacity & Enrollments */}
-        <div className="grid grid-cols-3 gap-2 text-sm">
-          <div>
-            <p className="font-medium text-muted-foreground">Capacité</p>
-            <p>{capacity}</p>
-          </div>
-          <div>
-            <p className="font-medium text-muted-foreground">Inscrits</p>
-            <p className={isAtCapacity ? "text-destructive font-semibold" : ""}>
-              {enrolment_count}/{capacity}
-            </p>
-          </div>
-          {waitlist_count > 0 && (
-            <div>
-              <p className="font-medium text-muted-foreground">Waitlist</p>
-              <p>{waitlist_count}</p>
-            </div>
-          )}
-        </div>
+         {/* Capacity & Enrollments */}
+         <div className="grid grid-cols-3 gap-2 text-sm">
+           <div>
+             <p className="font-medium text-[var(--muted-foreground)]">Capacité</p>
+             <p>{capacity}</p>
+           </div>
+           <div>
+             <p className="font-medium text-[var(--muted-foreground)]">Inscrits</p>
+             <p className={isAtCapacity ? "text-destructive font-semibold" : ""}>
+               {enrolment_count}/{capacity}
+             </p>
+           </div>
+           {waitlist_count > 0 && (
+             <div>
+               <p className="font-medium text-[var(--muted-foreground)]">Waitlist</p>
+               <p>{waitlist_count}</p>
+             </div>
+           )}
+         </div>
 
         {/* Price */}
         {price_cents > 0 && (

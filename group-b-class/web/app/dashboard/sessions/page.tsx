@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/Button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import {
   Table,
   TableBody,
@@ -12,8 +12,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+} from "@/components/ui/Table";
+import { Badge } from "@/components/ui/Badge";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/api";
 import { format } from "date-fns";
@@ -56,9 +56,9 @@ export default function SessionsPage() {
       setError(null);
       // GET /v1/classes/{class_id}/sessions — requiert de charger les classes du mentor en premier
       // Pour démo, on récupère toutes les sessions de toutes les classes du mentor
-      const response = await apiClient.get("/v1/me/sessions");
-      if (response.data && Array.isArray(response.data)) {
-        setSessions(response.data);
+      const data = await apiClient.get<any[]>("/v1/me/sessions");
+      if (Array.isArray(data)) {
+        setSessions(data);
       }
     } catch (err) {
       console.error("Failed to fetch sessions:", err);
@@ -70,7 +70,14 @@ export default function SessionsPage() {
 
   const formatDate = (dateStr: string) => {
     try {
-      return format(new Date(dateStr), "dd MMM yyyy HH:mm");
+      const date = new Date(dateStr);
+      return date.toLocaleString("fr-FR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
     } catch {
       return dateStr;
     }
