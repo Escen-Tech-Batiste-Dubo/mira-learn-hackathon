@@ -17,6 +17,33 @@ from app.services.mira_class_session_service import MiraClassSessionService
 router = APIRouter()
 
 
+@router.get("/v1/me/sessions", response_model=dict)
+async def list_my_sessions(
+    user: AuthenticatedUser = Depends(require_role("mentor")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Liste toutes les sessions du mentor connecté (toutes classes confondues).
+
+    Returns: JSend success avec array of MiraClassSessionListRead
+    """
+    try:
+        sessions = await MiraClassSessionService.list_all_sessions_for_mentor(
+            mentor_user_id=user.user_id,
+            db=db,
+        )
+        return success_response(
+            data=[
+                MiraClassSessionListRead.model_validate(s).model_dump()
+                for s in sessions
+            ],
+            message=f"Found {len(sessions)} session(s)",
+        )
+    except AppException:
+        raise
+    except Exception as exc:
+        raise AppException(f"Failed to list sessions: {str(exc)}", status_code=500) from exc
+
+
 @router.post("/v1/classes/{class_id}/sessions", response_model=dict)
 async def create_session(
     class_id: str,
@@ -79,7 +106,7 @@ async def list_sessions(
         raise AppException(f"Failed to list sessions: {str(exc)}", status_code=500) from exc
 
 
-@router.get("/v1/sessions/{session_id}", response_model=dict)
+@router.get("/v1/classes/sessions/{session_id}", response_model=dict)
 async def get_session(
     session_id: str,
     user: AuthenticatedUser = Depends(require_role("mentor")),
@@ -104,7 +131,7 @@ async def get_session(
         raise AppException(f"Failed to retrieve session: {str(exc)}", status_code=500) from exc
 
 
-@router.patch("/v1/sessions/{session_id}", response_model=dict)
+@router.patch("/v1/classes/sessions/{session_id}", response_model=dict)
 async def update_session(
     session_id: str,
     body: MiraClassSessionUpdate,
@@ -136,7 +163,7 @@ async def update_session(
         raise AppException(f"Failed to update session: {str(exc)}", status_code=500) from exc
 
 
-@router.delete("/v1/sessions/{session_id}", response_model=dict)
+@router.delete("/v1/classes/sessions/{session_id}", response_model=dict)
 async def delete_session(
     session_id: str,
     user: AuthenticatedUser = Depends(require_role("mentor")),

@@ -102,7 +102,7 @@ class MiraClassSessionService:
         class_id: str,
         mentor_user_id: str,
         db: AsyncSession,
-    "") -> list[MiraClassSession]:
+    ) -> list[MiraClassSession]:
         """Liste toutes les sessions d'une class (mentor seule)."""
         # Vérifie que la class appartient au mentor
         result = await db.execute(
@@ -120,6 +120,35 @@ class MiraClassSessionService:
             .where(
                 and_(
                     MiraClassSession.class_id == class_id,
+                    MiraClassSession.deleted_at.is_(None),
+                )
+            )
+            .order_by(MiraClassSession.starts_at)
+        )
+        return result.scalars().all()
+
+    @staticmethod
+    async def list_all_sessions_for_mentor(
+        mentor_user_id: str,
+        db: AsyncSession,
+    ) -> list[MiraClassSession]:
+        """Liste toutes les sessions du mentor (toutes classes confondues)."""
+        # Charge toutes les classes du mentor
+        result_classes = await db.execute(
+            select(MiraClass).where(MiraClass.mentor_user_id == mentor_user_id)
+        )
+        mentor_classes = result_classes.scalars().all()
+        class_ids = [c.id for c in mentor_classes]
+
+        if not class_ids:
+            return []
+
+        # Liste les sessions non-supprimées de toutes les classes
+        result = await db.execute(
+            select(MiraClassSession)
+            .where(
+                and_(
+                    MiraClassSession.class_id.in_(class_ids),
                     MiraClassSession.deleted_at.is_(None),
                 )
             )
