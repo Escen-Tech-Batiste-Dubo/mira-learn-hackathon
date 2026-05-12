@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import AuthenticatedUser, require_role
-from app.core.db import get_session
+from app.core.db import get_db
 from app.core.exceptions import AppException
 from app.core.responses import success_response
 from app.schemas.mira_class_session import (
@@ -22,7 +22,7 @@ async def create_session(
     class_id: str,
     body: MiraClassSessionCreate,
     user: AuthenticatedUser = Depends(require_role("mentor")),
-    db: AsyncSession = Depends(get_session),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Crée une nouvelle session pour une class.
 
@@ -54,7 +54,7 @@ async def create_session(
 async def list_sessions(
     class_id: str,
     user: AuthenticatedUser = Depends(require_role("mentor")),
-    db: AsyncSession = Depends(get_session),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Liste toutes les sessions d'une class (mentor seule).
 
@@ -83,7 +83,7 @@ async def list_sessions(
 async def get_session(
     session_id: str,
     user: AuthenticatedUser = Depends(require_role("mentor")),
-    db: AsyncSession = Depends(get_session),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Récupère une session (vérif ownership).
 
@@ -109,7 +109,7 @@ async def update_session(
     session_id: str,
     body: MiraClassSessionUpdate,
     user: AuthenticatedUser = Depends(require_role("mentor")),
-    db: AsyncSession = Depends(get_session),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Met à jour une session (PATCH, tous champs optionnels).
 
@@ -140,7 +140,7 @@ async def update_session(
 async def delete_session(
     session_id: str,
     user: AuthenticatedUser = Depends(require_role("mentor")),
-    db: AsyncSession = Depends(get_session),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Soft-delete une session (set deleted_at).
 

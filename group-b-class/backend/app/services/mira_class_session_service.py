@@ -102,7 +102,7 @@ class MiraClassSessionService:
         class_id: str,
         mentor_user_id: str,
         db: AsyncSession,
-    ) -> list[MiraClassSession]:
+    "") -> list[MiraClassSession]:
         """Liste toutes les sessions d'une class (mentor seule)."""
         # Vérifie que la class appartient au mentor
         result = await db.execute(
