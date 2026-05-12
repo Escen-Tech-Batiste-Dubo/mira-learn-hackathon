@@ -9,12 +9,16 @@ import type {
   UpdateModulePayload,
 } from "@/types/module";
 
+type ApiModule = Omit<Module, "duration_hours"> & {
+  duration_hours: number | string;
+};
+
 type ModulesResponse = {
-  modules: Module[];
+  modules: ApiModule[];
 };
 
 type ModuleResponse = {
-  module: Module;
+  module: ApiModule;
 };
 
 type Revalidator = () => void;
@@ -62,6 +66,18 @@ function getModulePath(classId: string, moduleId: string): string {
   return `/v1/classes/${encodePathSegment(classId)}/modules/${encodePathSegment(moduleId)}`;
 }
 
+function normalizeModule(module: ApiModule): Module {
+  const durationHours = Number(module.duration_hours);
+  if (!Number.isFinite(durationHours)) {
+    throw new Error("Invalid module duration");
+  }
+
+  return {
+    ...module,
+    duration_hours: durationHours,
+  };
+}
+
 export function useModules(
   classId: string,
 ): { modules: Module[]; isLoading: boolean; error: unknown; mutate: () => void } {
@@ -87,7 +103,11 @@ export function useModules(
       if (requestId !== requestIdRef.current) {
         return;
       }
-      setModules([...data.modules].sort((left, right) => left.position - right.position));
+      setModules(
+        data.modules
+          .map(normalizeModule)
+          .sort((left, right) => left.position - right.position),
+      );
       setError(null);
     } catch (nextError: unknown) {
       if (requestId === requestIdRef.current) {
@@ -131,7 +151,7 @@ export function useCreateModule(
       try {
         const data = await apiClient.post<ModuleResponse>(getModulesPath(classId), payload);
         notifyModulesChanged(classId);
-        return data.module;
+        return normalizeModule(data.module);
       } finally {
         setPendingCount((current) => Math.max(0, current - 1));
       }
@@ -159,7 +179,7 @@ export function useUpdateModule(
           payload,
         );
         notifyModulesChanged(classId);
-        return data.module;
+        return normalizeModule(data.module);
       } finally {
         setPendingCount((current) => Math.max(0, current - 1));
       }
@@ -187,7 +207,7 @@ export function useReorderModules(
           { module_ids_in_order: orderedIds },
         );
         notifyModulesChanged(classId);
-        return data.modules;
+        return data.modules.map(normalizeModule);
       } finally {
         setPendingCount((current) => Math.max(0, current - 1));
       }

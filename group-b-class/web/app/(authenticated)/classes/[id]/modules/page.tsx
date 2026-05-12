@@ -36,6 +36,17 @@ function getErrorMessage(fallback: string): string {
   return fallback;
 }
 
+function formatDurationHours(durationHours: number | string): string {
+  const parsedDurationHours = Number(durationHours);
+  if (!Number.isFinite(parsedDurationHours)) {
+    return "";
+  }
+
+  const formattedValue = parsedDurationHours.toFixed(1).replace(/\.0$/, "");
+
+  return `${formattedValue}h`;
+}
+
 function reorderLocally(modules: Module[], fromIndex: number, toIndex: number): Module[] {
   const reordered = [...modules];
   const [moved] = reordered.splice(fromIndex, 1);
@@ -331,7 +342,9 @@ export default function ModulesPage() {
                         <span className="rounded-full bg-[#E2DCD3] px-3 py-1 text-xs text-[#1D1D1B]">
                           {MODULE_TYPE_LABELS[module.type]}
                         </span>
-                        <span className="text-xs text-[#888888]">{module.duration_hours}h</span>
+                        <span className="text-xs text-[#888888]">
+                          {formatDurationHours(module.duration_hours)}
+                        </span>
                       </div>
                     </div>
 
