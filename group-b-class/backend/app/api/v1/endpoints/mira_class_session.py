@@ -12,6 +12,8 @@ from app.schemas.mira_class_session import (
     MiraClassSessionRead,
     MiraClassSessionUpdate,
 )
+from pydantic import ValidationError as PydanticValidationError
+
 from app.services.mira_class_session_service import MiraClassSessionService
 
 router = APIRouter()
@@ -47,7 +49,7 @@ async def list_my_sessions(
 @router.post("/classes/{class_id}/sessions", response_model=dict)
 async def create_session(
     class_id: str,
-    body: MiraClassSessionCreate,
+    body: dict,
     user: AuthenticatedUser = Depends(require_role("mentor")),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -57,10 +59,21 @@ async def create_session(
     - Auto-bascule class de validated_draft → enrichment_in_progress (1ère session)
     - Returns: JSend success avec MiraClassSessionRead
     """
+    # Manually validate payload to return detailed validation errors (avoids 422 without details)
+    try:
+        validated: MiraClassSessionCreate = MiraClassSessionCreate.model_validate(body)
+    except PydanticValidationError as pve:
+        # Return JSend fail with validation details
+        return {
+            "status": "fail",
+            "data": {"errors": pve.errors()},
+            "message": "Validation error",
+        }
+
     try:
         session = await MiraClassSessionService.create_session(
             class_id=class_id,
-            body=body,
+            body=validated,
             mentor_user_id=user.user_id,
             db=db,
         )
