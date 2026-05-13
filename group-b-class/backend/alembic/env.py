@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from app.core.config import settings
 from app.models.base import Base
 
-# Charger les modèles métier Groupe B pour autogenerate.
-from app.models import mentor_profile, mira_class, mira_class_session  # noqa: F401
+# Enregistre tous les modèles Groupe B pour autogenerate / metadata Alembic.
+import app.models  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

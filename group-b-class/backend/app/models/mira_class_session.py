@@ -5,7 +5,7 @@ State machine: planned → open_enrolment → full | in_progress → completed |
 """
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Integer, String, Text, and_, func, text
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, DateTime, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import NUMERIC, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -118,16 +118,19 @@ class MiraClassSession(Base, TimestampMixin, SoftDeleteMixin):
 
     # Dates
     starts_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         nullable=False,
     )
     """Session start time."""
 
     ends_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         nullable=False,
     )
     """Session end time."""
 
     enrolment_deadline: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
         nullable=True,
     )
     """Deadline for enrolment (default: starts_at - 24h)."""
@@ -141,6 +144,7 @@ class MiraClassSession(Base, TimestampMixin, SoftDeleteMixin):
     """Boosted visibility at catalogue."""
 
     promoted_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
         nullable=True,
     )
 
@@ -158,21 +162,6 @@ class MiraClassSession(Base, TimestampMixin, SoftDeleteMixin):
         default=0,
     )
     """Number of waitlisted enrolments (updated by service)."""
-
-    # Audit
-    created_at: Mapped[datetime] = mapped_column(
-        nullable=False,
-        server_default=func.now(),
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now(),
-    )
-    deleted_at: Mapped[datetime | None] = mapped_column(
-        nullable=True,
-        default=None,
-    )
 
     # Constraints + indexes
     __table_args__ = (
