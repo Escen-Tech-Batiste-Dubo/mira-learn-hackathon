@@ -33,7 +33,7 @@ import { getAccessToken } from "@/lib/supabase";
  *
  *   Voir `fronts/book-web/lib/sdk.ts` + `lib/api-client.ts` pour référence post-migration.
  */
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 /** Réponse JSend standard depuis le backend. */
 export type JSendResponse<T = unknown> = {
@@ -55,10 +55,14 @@ export class ApiError extends Error {
 }
 
 async function request<T>(
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PATCH" | "DELETE" | "PUT",
   path: string,
   body?: unknown,
 ): Promise<T> {
+  if (!API_URL) {
+    throw new ApiError("Configuration API manquante", 500);
+  }
+
   const token = await getAccessToken();
 
   const headers: Record<string, string> = {
@@ -103,4 +107,5 @@ export const apiClient = {
   post: <T = unknown>(path: string, body?: unknown) => request<T>("POST", path, body),
   patch: <T = unknown>(path: string, body?: unknown) => request<T>("PATCH", path, body),
   delete: <T = unknown>(path: string) => request<T>("DELETE", path),
+  put: <T = unknown>(path: string, body?: unknown) => request<T>("PUT", path, body),
 };

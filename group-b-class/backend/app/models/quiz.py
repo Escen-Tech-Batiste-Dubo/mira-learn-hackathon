@@ -1,37 +1,12 @@
-"""
-Modèles SQLAlchemy — périmètre classes / modules / QCM (groupe B).
-
-Alignés sur `alembic/versions/0001_group_b_class_schema.py`.
-"""
+"""SQLAlchemy models — QCM module (`mira_class_module_quiz*` tables)."""
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, IDMixin, PgUuidStr, SoftDeleteMixin, TimestampMixin
-
-
-class MiraClass(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
-    __tablename__ = "mira_class"
-
-    mentor_user_id: Mapped[str] = mapped_column(PgUuidStr, nullable=False, index=True)
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
-
-
-class MiraClassModule(Base, IDMixin, TimestampMixin, SoftDeleteMixin):
-    __tablename__ = "mira_class_module"
-
-    class_id: Mapped[str] = mapped_column(PgUuidStr, nullable=False, index=True)
-    position: Mapped[int] = mapped_column(Integer, nullable=False)
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
-    duration_hours: Mapped[Decimal] = mapped_column(Numeric(4, 1), nullable=False)
-    type: Mapped[str] = mapped_column(String(32), nullable=False, server_default="theory")
 
 
 class MiraClassModuleQuiz(Base, IDMixin, TimestampMixin, SoftDeleteMixin):

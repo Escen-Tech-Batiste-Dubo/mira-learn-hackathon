@@ -29,9 +29,9 @@ import logging
 from typing import Any, Literal
 
 import httpx
-from fastapi import Header, HTTPException, status
-from jose import jwt
-from jose.exceptions import JWTError
+from fastapi import Depends, Header, HTTPException, status
+from jose import jwt  # type: ignore[import-untyped]
+from jose.exceptions import JWTError  # type: ignore[import-untyped]
 
 from app.core.config import settings
 
@@ -51,44 +51,109 @@ async def _fetch_jwks() -> dict[str, Any]:
         return _jwks_cache
 
     url = settings.supabase_jwks_url()
-    # WHY : le gateway Supabase exige l’en-tête `apikey` (clé anon) sur /auth/v1/* ;
-    # sans lui, JWKS répond 401 et on mappe à tort un 503 « Auth unavailable ».
-    headers = {
-        "apikey": settings.SUPABASE_ANON_KEY,
-        "Authorization": f"Bearer {settings.SUPABASE_ANON_KEY}",
-    }
     async with httpx.AsyncClient(timeout=5.0) as client:
-        response = await client.get(url, headers=headers)
+        response = await client.get(
+            url,
+            headers={
+                "apikey": settings.SUPABASE_ANON_KEY,
+                "Authorization": f"Bearer {settings.SUPABASE_ANON_KEY}",
+            },
+        )
         response.raise_for_status()
         _jwks_cache = response.json()
         return _jwks_cache
 
 
-async def _decode_jwt(token: str) -> dict[str, Any]:
-    """Décode + valide un JWT Supabase via JWKS (RS256 ou ES256 selon le projet)."""
+async def _verify_token_with_auth_server(token: str) -> dict[str, Any]:
+    """Valide le token via Supabase Auth quand JWKS n'est pas disponible."""
+    url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/user"
     try:
-        jwks = await _fetch_jwks()
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(
+                url,
+                headers={
+                    "apikey": settings.SUPABASE_ANON_KEY,
+                    "Authorization": f"Bearer {token}",
+                },
+            )
     except httpx.HTTPError as exc:
-        logger.error("Failed to fetch JWKS: %s", exc, exc_info=True)
+        logger.error("Failed to reach Supabase Auth user endpoint: %s", exc, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Auth service temporarily unavailable",
+        ) from exc
+
+    if response.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     try:
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        logger.error("Supabase Auth user endpoint failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Auth service temporarily unavailable",
+        ) from exc
+
+    user = response.json()
+    user_id = user.get("id")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return {
+        "sub": user_id,
+        "email": user.get("email"),
+        "user_metadata": user.get("user_metadata") or {},
+        "app_metadata": user.get("app_metadata") or {},
+        "aud": user.get("aud", "authenticated"),
+        "role": user.get("role", "authenticated"),
+    }
+
+
+async def _decode_jwt(token: str) -> dict[str, Any]:
+    """Décode + valide un JWT Supabase via JWKS RS256."""
+    try:
         header = jwt.get_unverified_header(token)
         kid = header.get("kid")
-        if not kid:
-            raise JWTError("Missing 'kid' header")
+        alg = header.get("alg")
+    except JWTError as exc:
+        logger.warning("JWT header validation failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
 
+    if not kid or alg == "HS256":
+        return await _verify_token_with_auth_server(token)
+
+    try:
+        jwks = await _fetch_jwks()
+    except httpx.HTTPError as exc:
+        logger.warning("Failed to fetch JWKS, falling back to Supabase Auth: %s", exc)
+        return await _verify_token_with_auth_server(token)
+
+    try:
         key = next((k for k in jwks["keys"] if k.get("kid") == kid), None)
         if not key:
-            raise JWTError("Signing key not found in JWKS")
+            logger.warning("Signing key %r not found in JWKS, falling back to Supabase Auth", kid)
+            return await _verify_token_with_auth_server(token)
+
+        key_algorithm = key.get("alg")
+        algorithms = [key_algorithm] if isinstance(key_algorithm, str) else ["RS256", "ES256"]
 
         return jwt.decode(
             token,
             key=key,
-            algorithms=["RS256", "ES256"],
+            algorithms=algorithms,
             audience="authenticated",
             options={"verify_aud": True},
         )
@@ -104,6 +169,16 @@ async def _decode_jwt(token: str) -> dict[str, Any]:
 UserRole = Literal["nomad", "mentor", "admin"]
 
 
+def _read_role(value: object) -> UserRole | None:
+    """Read a supported Mira role from Supabase metadata."""
+    if not isinstance(value, dict):
+        return None
+    role = value.get("role")
+    if role in ("nomad", "mentor", "admin"):
+        return role
+    return None
+
+
 class AuthenticatedUser:
     """User authentifié extrait du JWT.
 
@@ -113,16 +188,16 @@ class AuthenticatedUser:
             - tenant_id, is_founder, is_internal, ...
     """
 
-    def __init__(self, user_id: str, email: str | None, role: str) -> None:
+    def __init__(self, user_id: str, email: str | None, role: UserRole) -> None:
         self.user_id = user_id
         self.email = email
-        self.role: UserRole = role  # type: ignore[assignment]
+        self.role = role
 
     def __repr__(self) -> str:
         return f"AuthenticatedUser(user_id={self.user_id!r}, role={self.role!r})"
 
 
-async def require_auth(authorization: str = Header(...)) -> AuthenticatedUser:
+async def require_auth(authorization: str | None = Header(default=None)) -> AuthenticatedUser:
     """FastAPI dependency : extrait user authentifié du header Authorization.
 
     Usage :
@@ -130,7 +205,7 @@ async def require_auth(authorization: str = Header(...)) -> AuthenticatedUser:
         async def get_me(user: AuthenticatedUser = Depends(require_auth)):
             return user
     """
-    if not authorization.startswith("Bearer "):
+    if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid Authorization header",
@@ -144,12 +219,9 @@ async def require_auth(authorization: str = Header(...)) -> AuthenticatedUser:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token: no sub claim")
 
     email = payload.get("email")
+    app_metadata = payload.get("app_metadata", {}) or {}
     user_metadata = payload.get("user_metadata", {}) or {}
-    role = user_metadata.get("role", "nomad")
-
-    if role not in ("nomad", "mentor", "admin"):
-        logger.warning("Unknown role %r in JWT for user %s, defaulting to nomad", role, user_id)
-        role = "nomad"
+    role = _read_role(app_metadata) or _read_role(user_metadata) or "nomad"
 
     return AuthenticatedUser(user_id=user_id, email=email, role=role)
 
@@ -174,7 +246,7 @@ def require_role(*allowed_roles: UserRole):
             ...
     """
 
-    async def _check(user: AuthenticatedUser = __import__("fastapi").Depends(require_auth)) -> AuthenticatedUser:
+    async def _check(user: AuthenticatedUser = Depends(require_auth)) -> AuthenticatedUser:
         if user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

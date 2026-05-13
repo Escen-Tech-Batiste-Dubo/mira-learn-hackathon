@@ -10,9 +10,9 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.integrations.openrouter import llm_client
-from app.models.class_b_domain import (
-    MiraClass,
-    MiraClassModule,
+from app.models.mira_class import MiraClass
+from app.models.module import MiraClassModule
+from app.models.quiz import (
     MiraClassModuleQuiz,
     MiraClassModuleQuizOption,
     MiraClassModuleQuizQuestion,
