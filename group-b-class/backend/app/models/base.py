@@ -35,8 +35,12 @@ MIGRATION HINT (post-hackathon, CRITIQUE) :
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, func
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+# Colonnes UUID natives Postgres ; Python reste en str (JWT, API, JSON).
+PgUuidStr = PG_UUID(as_uuid=False)
 
 
 def _generate_uuid() -> str:
@@ -52,7 +56,7 @@ class IDMixin:
     """Mixin : colonne id UUID v4 PK."""
 
     id: Mapped[str] = mapped_column(
-        String(36),
+        PgUuidStr,
         primary_key=True,
         default=_generate_uuid,
     )

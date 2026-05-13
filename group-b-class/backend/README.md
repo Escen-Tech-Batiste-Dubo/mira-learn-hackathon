@@ -25,6 +25,17 @@ make migrate
 make dev
 ```
 
+## Migrations `0001` / `0002` (contrats figés)
+
+Les fichiers `alembic/versions/0001_*` et `0002_*` sont **la source de vérité livrée** : ne pas les modifier à la main ([`RULES.md`](../../RULES.md)). Toute évolution de schéma passe par une migration **`0003+`** validée avec le mentor HLMR.
+
+**Limite importante** : si `alembic upgrade head` **échoue sur `0001`** (ex. table `mentor_application` absente dans la DB isolée groupe B, ou ordre des `CREATE TABLE` incompatible avec les FK), une migration **`0003` ne peut pas corriger** le problème : Alembic n’appliquera jamais `0003` tant que `0001` n’a pas été enregistrée avec succès.
+
+Dans ce cas, la voie conforme est :
+
+1. **Mentor HLMR** — aligner les `contracts/` (ex. stub `mentor_application` côté B, ou FK logique sans `REFERENCES`) puis **régénérer** `0001` via [`seeds/build_schema_migrations.py`](../../seeds/build_schema_migrations.py) (voir commentaire en tête du fichier `0001_*.py`).
+2. Ensuite seulement : nouvelles migrations **`0003+`** pour les évolutions d’équipe.
+
 API sur `http://localhost:8000`.
 Swagger UI sur `http://localhost:8000/docs`.
 
