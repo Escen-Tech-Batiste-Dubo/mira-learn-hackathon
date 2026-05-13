@@ -52,8 +52,7 @@ export default function SessionsPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await apiClient.get<SessionListResponse>("/v1/me/sessions");
-      const sessionList = response?.items || response?.data || [];
+      const sessionList = await apiClient.get<SessionListResponse>("/v1/me/sessions");
       if (Array.isArray(sessionList)) {
         setSessions(sessionList);
       }
