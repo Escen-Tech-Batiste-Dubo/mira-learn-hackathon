@@ -38,6 +38,7 @@ class MiraClassSessionCreate(MiraClassSessionBase):
 class MiraClassSessionUpdate(BaseModel):
     """PATCH /v1/sessions/{id} request body (partial update, all fields optional)."""
 
+    type: Optional[SessionType] = Field(None, description="physical, virtual, or hybrid")
     location_address: Optional[str] = Field(None, max_length=500)
     location_city: Optional[str] = Field(None, max_length=120)
     location_country: Optional[str] = Field(None, max_length=120)

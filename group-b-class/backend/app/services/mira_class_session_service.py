@@ -198,10 +198,19 @@ class MiraClassSessionService:
                 f"Can only update sessions in 'planned' status. Current status: {session.status}"
             )
 
-        # Valide cohérence type/location si location_address change
-        if body.location_address is not None:
-            if session.type == "virtual":
+        # Détermine le type final (nouveau ou ancien)
+        final_type = body.type if body.type is not None else session.type
+
+        # Valide cohérence type/location
+        if final_type == "virtual":
+            # Sessions virtuelles ne doivent pas avoir d'adresse
+            if body.location_address is not None and body.location_address != "":
                 raise ValidationError("Virtual sessions cannot have location_address", "location_address")
+        else:
+            # Sessions présentiel/hybride doivent avoir une adresse
+            final_address = body.location_address if body.location_address is not None else session.location_address
+            if not final_address:
+                raise ValidationError("Physical/hybrid sessions require location_address", "location_address")
 
         # Valide dates
         starts = body.starts_at if body.starts_at is not None else session.starts_at
@@ -210,6 +219,8 @@ class MiraClassSessionService:
             raise ValidationError("ends_at must be after starts_at", "ends_at")
 
         # Update les champs
+        if body.type is not None:
+            session.type = body.type
         if body.location_address is not None:
             session.location_address = body.location_address
         if body.location_city is not None:
