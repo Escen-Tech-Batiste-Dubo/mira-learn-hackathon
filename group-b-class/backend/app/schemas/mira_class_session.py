@@ -38,11 +38,58 @@ class MiraClassSessionCreate(MiraClassSessionBase):
 class MiraClassSessionUpdate(BaseModel):
     """PATCH /v1/sessions/{id} request body (partial update, all fields optional)."""
 
-    type: Optional[SessionType] = Field(None, description="physical, virtual, or hybrid")
-    location_address: Optional[str] = Field(None, max_length=500)
-    location_city: Optional[str] = Field(None, max_length=120)
-    location_country: Optional[str] = Field(None, max_length=120)
-    capacity: Optional[int] = Field(None, ge=1, le=50)
+    type: Optional[SessionType] = Field(
+        None,
+        description="physical, virtual, or hybrid",
+    )
+
+    # Physical location
+    location_address: Optional[str] = Field(
+        None,
+        max_length=500,
+    )
+
+    location_city: Optional[str] = Field(
+        None,
+        max_length=120,
+    )
+
+    location_country: Optional[str] = Field(
+        None,
+        max_length=120,
+    )
+
+    location_lat: Optional[float] = None
+    location_lng: Optional[float] = None
+
+    # Online meeting
+    online_meeting_provider: Optional[MeetingProvider] = None
+
+    online_meeting_default_url: Optional[str] = Field(
+        None,
+        max_length=500,
+    )
+
+    # Capacity / pricing
+    capacity: Optional[int] = Field(
+        None,
+        ge=1,
+        le=50,
+    )
+
+    waitlist_enabled: Optional[bool] = None
+
+    waitlist_max_size: Optional[int] = Field(
+        None,
+        ge=0,
+    )
+
+    price_cents: Optional[int] = Field(
+        None,
+        ge=0,
+    )
+
+    # Dates
     starts_at: Optional[datetime] = None
     ends_at: Optional[datetime] = None
     enrolment_deadline: Optional[datetime] = None

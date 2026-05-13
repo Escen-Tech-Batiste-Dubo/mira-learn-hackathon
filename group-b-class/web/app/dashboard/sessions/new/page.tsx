@@ -31,6 +31,8 @@ interface CreateSessionPayload {
   location_address?: string;
   location_city?: string;
   location_country?: string;
+  online_meeting_provider?: string;
+  online_meeting_default_url?: string;
   capacity: number;
   price_cents: number;
   starts_at: string;
@@ -53,6 +55,8 @@ interface FormData {
   location_address: string;
   location_city: string;
   location_country: string;
+  online_meeting_provider: string;
+  online_meeting_default_url: string;
   capacity: number;
   price_cents: number;
   starts_at: string;
@@ -77,6 +81,8 @@ export default function CreateSessionPage() {
     location_address: "",
     location_city: "",
     location_country: "",
+    online_meeting_provider: "",
+    online_meeting_default_url: "",
     capacity: 10,
     price_cents: 0,
     starts_at: "",
@@ -130,6 +136,20 @@ export default function CreateSessionPage() {
     if (!formData.ends_at) {
       newErrors.ends_at = "Date de fin requise";
     }
+    if (
+      formData.type === "virtual" &&
+      !formData.online_meeting_provider
+    ) {
+      newErrors.online_meeting_provider =
+        "Le provider est requis";
+    }
+    if (
+      formData.type === "virtual" &&
+      !formData.online_meeting_default_url
+    ) {
+      newErrors.online_meeting_default_url =
+        "Le lien de réunion est requis";
+    }
 
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
@@ -138,9 +158,26 @@ export default function CreateSessionPage() {
       setIsSubmitting(true);
 
       const payload: CreateSessionPayload = {
-        ...formData,
+        class_id: formData.class_id,
+        type: formData.type,
+        capacity: formData.capacity,
         price_cents: Math.floor(formData.price_cents * 100),
+        starts_at: formData.starts_at,
+        ends_at: formData.ends_at,
+        waitlist_enabled: formData.waitlist_enabled,
+        waitlist_max_size: formData.waitlist_max_size,
       };
+
+      if (formData.type !== "virtual") {
+        payload.location_address = formData.location_address || undefined;
+        payload.location_city = formData.location_city || undefined;
+        payload.location_country = formData.location_country || undefined;
+      }
+
+      if (formData.type !== "physical") {
+        payload.online_meeting_provider = formData.online_meeting_provider || undefined;
+        payload.online_meeting_default_url = formData.online_meeting_default_url || undefined;
+      }
 
       const response = await apiClient.post<SessionResponse>(
         `/v1/classes/${formData.class_id}/sessions`,
@@ -260,6 +297,58 @@ export default function CreateSessionPage() {
                       onChange={(e) => setFormData({ ...formData, location_country: e.target.value })}
                     />
                   </div>
+                </div>
+              </>
+            )}
+            {/* Champs online (si virtual/hybrid) */}
+
+            {selectedType !== "physical" && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Provider de visioconférence
+                  </label>
+                  <select
+                    value={formData.online_meeting_provider}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        online_meeting_provider: e.target.value,
+                      })
+                    }
+                    className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--color-card)] px-3 py-2 text-base"
+                  >
+                    <option value="">Sélectionner</option>
+                    <option value="google_meet">Google Meet</option>
+                    <option value="zoom">Zoom</option>
+                    <option value="teams">Microsoft Teams</option>
+                    <option value="other">Autre</option>
+                  </select>
+                  {errors.online_meeting_provider && (
+                    <p className="text-sm text-red-500">
+                      {errors.online_meeting_provider}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Lien de réunion
+                  </label>
+                  <Input
+                    placeholder="https://meet.google.com/..."
+                    value={formData.online_meeting_default_url}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        online_meeting_default_url: e.target.value,
+                      })
+                    }
+                  />
+                  {errors.online_meeting_default_url && (
+                    <p className="text-sm text-red-500">
+                      {errors.online_meeting_default_url}
+                    </p>
+                  )}
                 </div>
               </>
             )}
