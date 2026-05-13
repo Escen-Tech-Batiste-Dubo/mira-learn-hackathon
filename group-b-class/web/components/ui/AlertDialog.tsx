@@ -1,76 +1,133 @@
-import { ReactNode, useState } from "react";
+"use client";
+
+import {
+  ReactNode,
+  createContext,
+  useContext,
+  useState,
+} from "react";
+
 import { Button } from "./Button";
-import { Card, CardContent, CardDescription } from "./Card";
+import { Card } from "./Card";
 
 interface AlertDialogContextType {
   open: boolean;
   setOpen: (open: boolean) => void;
 }
 
-let alertDialogContext: AlertDialogContextType | null = null;
+const AlertDialogContext =
+  createContext<AlertDialogContextType | null>(null);
 
-export function AlertDialog({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  alertDialogContext = { open, setOpen };
-  return <>{children}</>;
+function useAlertDialog() {
+  const context = useContext(AlertDialogContext);
+
+  if (!context) {
+    throw new Error(
+      "AlertDialog components must be used inside AlertDialog"
+    );
+  }
+
+  return context;
 }
 
-export function AlertDialogTrigger({ children, asChild }: { children: ReactNode; asChild?: boolean }) {
+export function AlertDialog({children}: {
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <AlertDialogContext.Provider
+      value={{ open, setOpen }}
+    >
+      {children}
+    </AlertDialogContext.Provider>
+  );
+}
+
+export function AlertDialogTrigger({children}: {
+  children: ReactNode;
+  asChild?: boolean;
+}) {
+  const { setOpen } = useAlertDialog();
+
   return (
     <div
-      onClick={() => {
-        if (alertDialogContext) alertDialogContext.setOpen(true);
-      }}
+      onClick={() => setOpen(true)}
     >
       {children}
     </div>
   );
 }
 
-export function AlertDialogContent({ children }: { children: ReactNode }) {
-  if (!alertDialogContext?.open) return null;
-  
+export function AlertDialogContent({children}: {
+  children: ReactNode;
+}) {
+  const { open } = useAlertDialog();
+
+  if (!open) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <Card className="max-w-md w-full">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <Card className="w-full max-w-md p-6">
         {children}
       </Card>
     </div>
   );
 }
 
-export function AlertDialogTitle({ children }: { children: ReactNode }) {
-  return <h2 className="text-lg font-semibold">{children}</h2>;
+export function AlertDialogTitle({children}: {
+  children: ReactNode;
+}) {
+  return (
+    <h2 className="text-lg font-semibold">
+      {children}
+    </h2>
+  );
 }
 
-export function AlertDialogDescription({ children }: { children: ReactNode }) {
-  return <p className="text-sm text-[var(--muted-foreground)] mt-2">{children}</p>;
+export function AlertDialogDescription({children}: {
+  children: ReactNode;
+}) {
+  return (
+    <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+      {children}
+    </p>
+  );
 }
 
-export function AlertDialogCancel({ children }: { children: ReactNode }) {
+export function AlertDialogCancel({children}: {
+  children: ReactNode;
+}) {
+  const { setOpen } = useAlertDialog();
+
   return (
     <Button
       variant="outline"
-      onClick={() => {
-        if (alertDialogContext) alertDialogContext.setOpen(false);
-      }}
+      onClick={() => setOpen(false)}
     >
       {children}
     </Button>
   );
 }
 
-export function AlertDialogAction({ children, onClick, disabled }: { children: ReactNode; onClick?: () => void; disabled?: boolean }) {
+export function AlertDialogAction({children, onClick, disabled, className = ""}: {
+  children: ReactNode;
+  onClick?: () => Promise<void> | void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const { setOpen } = useAlertDialog();
+
   return (
     <Button
+      className={className}
       disabled={disabled}
-      onClick={() => {
-        onClick?.();
-        if (alertDialogContext) alertDialogContext.setOpen(false);
+      onClick={async () => {
+        await onClick?.();
+        setOpen(false);
       }}
     >
       {children}
     </Button>
   );
 }
-
