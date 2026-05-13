@@ -116,7 +116,7 @@ export default function SessionDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button asChild variant="outline">
+          <Button variant="outline">
             <Link href="/dashboard/sessions">← Retour</Link>
           </Button>
           <AlertDialog>

@@ -17,7 +17,7 @@ from app.services.mira_class_session_service import MiraClassSessionService
 router = APIRouter()
 
 
-@router.get("/v1/me/sessions", response_model=dict)
+@router.get("/me/sessions", response_model=dict)
 async def list_my_sessions(
     user: AuthenticatedUser = Depends(require_role("mentor")),
     db: AsyncSession = Depends(get_db),
@@ -44,7 +44,7 @@ async def list_my_sessions(
         raise AppException(f"Failed to list sessions: {str(exc)}", status_code=500) from exc
 
 
-@router.post("/v1/classes/{class_id}/sessions", response_model=dict)
+@router.post("/classes/{class_id}/sessions", response_model=dict)
 async def create_session(
     class_id: str,
     body: MiraClassSessionCreate,
@@ -77,7 +77,7 @@ async def create_session(
         raise AppException(f"Failed to create session: {str(exc)}", status_code=500) from exc
 
 
-@router.get("/v1/classes/{class_id}/sessions", response_model=dict)
+@router.get("/classes/{class_id}/sessions", response_model=dict)
 async def list_sessions(
     class_id: str,
     user: AuthenticatedUser = Depends(require_role("mentor")),
@@ -106,7 +106,7 @@ async def list_sessions(
         raise AppException(f"Failed to list sessions: {str(exc)}", status_code=500) from exc
 
 
-@router.get("/v1/classes/sessions/{session_id}", response_model=dict)
+@router.get("/classes/sessions/{session_id}", response_model=dict)
 async def get_session(
     session_id: str,
     user: AuthenticatedUser = Depends(require_role("mentor")),
@@ -131,7 +131,7 @@ async def get_session(
         raise AppException(f"Failed to retrieve session: {str(exc)}", status_code=500) from exc
 
 
-@router.patch("/v1/classes/sessions/{session_id}", response_model=dict)
+@router.patch("/classes/sessions/{session_id}", response_model=dict)
 async def update_session(
     session_id: str,
     body: MiraClassSessionUpdate,
@@ -163,7 +163,7 @@ async def update_session(
         raise AppException(f"Failed to update session: {str(exc)}", status_code=500) from exc
 
 
-@router.delete("/v1/classes/sessions/{session_id}", response_model=dict)
+@router.delete("/classes/sessions/{session_id}", response_model=dict)
 async def delete_session(
     session_id: str,
     user: AuthenticatedUser = Depends(require_role("mentor")),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -9,15 +9,69 @@ import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/api";
 
+// ===== Strict Types =====
+interface MiraClass {
+  id: string;
+  title: string;
+  description: string | null;
+  mentor_user_id: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface MiraClassListResponse {
+  items: MiraClass[];
+  total: number;
+}
+
+interface CreateSessionPayload {
+  class_id: string;
+  type: "physical" | "virtual" | "hybrid";
+  location_address?: string;
+  location_city?: string;
+  location_country?: string;
+  capacity: number;
+  price_cents: number;
+  starts_at: string;
+  ends_at: string;
+  waitlist_enabled: boolean;
+  waitlist_max_size: number;
+}
+
+interface SessionResponse {
+  id: string;
+  class_id: string;
+  type: "physical" | "virtual" | "hybrid";
+  status: string;
+  created_at: string;
+}
+
+interface FormData {
+  class_id: string;
+  type: "physical" | "virtual" | "hybrid";
+  location_address: string;
+  location_city: string;
+  location_country: string;
+  capacity: number;
+  price_cents: number;
+  starts_at: string;
+  ends_at: string;
+  waitlist_enabled: boolean;
+  waitlist_max_size: number;
+}
+
 export default function CreateSessionPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
-  const [classes, setClasses] = useState<any[]>([]);
+  const { user, loading: authLoading } = useAuth();
+  const [classes, setClasses] = useState<MiraClass[]>([]);
+  const [classesLoading, setClassesLoading] = useState(false);
+  const [classesError, setClassesError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedType, setSelectedType] = useState<"physical" | "virtual" | "hybrid">("virtual");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     class_id: "",
     type: "virtual",
     location_address: "",
@@ -31,28 +85,36 @@ export default function CreateSessionPage() {
     waitlist_max_size: 20,
   });
 
+  // Memoized fetch to avoid recreating on every render
+  const fetchClasses = useCallback(async () => {
+    try {
+      setClassesLoading(true);
+      setClassesError(null);
+      const response = await apiClient.get<MiraClassListResponse>("/v1/classes/me");
+      if (response && response.items && Array.isArray(response.items)) {
+        setClasses(response.items);
+      }
+    } catch (err) {
+      console.error("Failed to fetch classes:", err);
+      setClassesError("Erreur lors du chargement des classes");
+      setClasses([]);
+    } finally {
+      setClassesLoading(false);
+    }
+  }, []);
+
+  // Effect: Fetch classes when user is authenticated
   useEffect(() => {
-    if (loading) return;
+    if (authLoading) return;
     if (!user) {
       router.push("/login");
       return;
     }
 
     fetchClasses();
-  }, [user, loading, router]);
+  }, [authLoading, user, router, fetchClasses]);
 
-  const fetchClasses = async () => {
-    try {
-      const response = await apiClient.get<any[]>("/v1/me/classes");
-      if (Array.isArray(response)) {
-        setClasses(response);
-      }
-    } catch (err) {
-      console.error("Failed to fetch classes:", err);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
 
@@ -75,12 +137,12 @@ export default function CreateSessionPage() {
     try {
       setIsSubmitting(true);
 
-      const payload = {
+      const payload: CreateSessionPayload = {
         ...formData,
         price_cents: Math.floor(formData.price_cents * 100),
       };
 
-      const response = await apiClient.post<any>(
+      const response = await apiClient.post<SessionResponse>(
         `/v1/classes/${formData.class_id}/sessions`,
         payload
       );
@@ -96,8 +158,8 @@ export default function CreateSessionPage() {
     }
   };
 
-  if (loading) {
-    return <div className="p-8 text-center">Chargement...</div>;
+  if (authLoading) {
+    return <div className="p-8 text-center">Chargement de l'authentification...</div>;
   }
 
   return (
@@ -121,18 +183,28 @@ export default function CreateSessionPage() {
             {/* Classe */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Classe</label>
-              <select
-                value={formData.class_id}
-                onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
-                className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--color-card)] px-3 py-2 text-base"
-              >
-                <option value="">Sélectionner une classe</option>
-                {classes.map((cls) => (
-                  <option key={cls.id} value={cls.id}>
-                    {cls.title}
-                  </option>
-                ))}
-              </select>
+              {classesLoading ? (
+                <div className="flex h-11 items-center px-3 text-sm text-[var(--muted-foreground)]">
+                  Chargement des classes...
+                </div>
+              ) : classesError ? (
+                <div className="flex h-11 items-center px-3 text-sm text-red-500">
+                  {classesError}
+                </div>
+              ) : (
+                <select
+                  value={formData.class_id}
+                  onChange={(e) => setFormData({ ...formData, class_id: e.target.value })}
+                  className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--color-card)] px-3 py-2 text-base"
+                >
+                  <option value="">Sélectionner une classe</option>
+                  {classes.map((cls: MiraClass) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.title}
+                    </option>
+                  ))}
+                </select>
+              )}
               {errors.class_id && <p className="text-sm text-red-500">{errors.class_id}</p>}
             </div>
 
@@ -142,8 +214,9 @@ export default function CreateSessionPage() {
               <select
                 value={formData.type}
                 onChange={(e) => {
-                  setFormData({ ...formData, type: e.target.value as any });
-                  setSelectedType(e.target.value as any);
+                  const newType = e.target.value as "physical" | "virtual" | "hybrid";
+                  setFormData({ ...formData, type: newType });
+                  setSelectedType(newType);
                 }}
                 className="flex h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--color-card)] px-3 py-2 text-base"
               >
@@ -199,7 +272,7 @@ export default function CreateSessionPage() {
                 min="1"
                 max="50"
                 value={formData.capacity}
-                onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
+                onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value, 10) })}
               />
               <p className="text-xs text-[var(--muted-foreground)]">Entre 1 et 50 participants</p>
             </div>
@@ -262,7 +335,9 @@ export default function CreateSessionPage() {
                   type="number"
                   min="0"
                   value={formData.waitlist_max_size}
-                  onChange={(e) => setFormData({ ...formData, waitlist_max_size: parseInt(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, waitlist_max_size: parseInt(e.target.value, 10) })
+                  }
                 />
               </div>
             )}

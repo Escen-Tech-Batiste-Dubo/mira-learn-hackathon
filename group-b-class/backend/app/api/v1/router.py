@@ -5,7 +5,7 @@ MIGRATION HINT (post-hackathon) :
     Pattern conservé tel quel — chaque service backbone a son propre router agrégateur.
 """
 from fastapi import APIRouter
-from app.api.v1.endpoints import health, mira_class, mira_class_modules, mira_class_session
+from app.api.v1.endpoints import health, mira_class, mira_class_modules, mira_class_session, skill
 
 router = APIRouter()
 
