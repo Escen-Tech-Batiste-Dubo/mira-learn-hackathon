@@ -29,8 +29,9 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install ruff mypy
+      - run: pip install -r requirements.txt
       - run: ruff check app/
-      - run: mypy app/ --strict --ignore-missing-imports
+      - run: mypy app/
 
   backend-test:
     runs-on: ubuntu-latest

@@ -7,6 +7,7 @@ Convention Hello Mira :
     - Couverture minimum 30%
 """
 from datetime import datetime, timezone
+import uuid
 
 import pytest
 import pytest_asyncio
@@ -14,6 +15,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.models.mira_class import MiraClass
 from app.models.mira_class_enrolment import MiraClassEnrolment
 from app.models.mira_class_session import MiraClassSession
 from app.services.enrolment_service import (
@@ -21,13 +23,16 @@ from app.services.enrolment_service import (
     create_enrolment,
     decide_enrolment,
     get_enrolment,
+    get_enrolment_for_mentor,
     list_enrolments_for_session,
 )
 
-# UUID fixes (user_id / class_id PostgreSQL)
-CLASS_ID = "550e8400-e29b-41d4-a716-446655440000"
+# UUID fixes (user_id PostgreSQL)
 USER_A = "550e8400-e29b-41d4-a716-446655440001"
 USER_B = "550e8400-e29b-41d4-a716-446655440002"
+# Owns the MiraClass created per test_session fixture (mentor-only enrolment routes).
+MENTOR_USER_ID = USER_B
+OTHER_MENTOR_ID = "550e8400-e29b-41d4-a716-446655440099"
 LIST_USERS = [
     "550e8400-e29b-41d4-a716-446655440010",
     "550e8400-e29b-41d4-a716-446655440011",
@@ -39,8 +44,10 @@ CAPACITY_FILL_USERS = (
     "550e8400-e29b-41d4-a716-446655440020",
     "550e8400-e29b-41d4-a716-446655440021",
 )
-UNKNOWN_ENROLMENT_ID = "00000000-0000-4000-8000-000000000001"
-UNKNOWN_ENROLMENT_ID_HTTP = "00000000-0000-4000-8000-000000000099"
+
+
+def _random_uuid() -> str:
+    return str(uuid.uuid4())
 
 
 def _enrolled_now() -> datetime:
@@ -48,7 +55,7 @@ def _enrolled_now() -> datetime:
 
 
 @pytest.mark.asyncio
-class TestEnrolmentService:
+class Test01EnrolmentService:
     """Tests unitaires du service enrolment_service."""
 
     async def test_get_enrolment_success(self, db: AsyncSession, test_session: MiraClassSession) -> None:
@@ -69,11 +76,6 @@ class TestEnrolmentService:
         assert result.user_id == USER_A
         assert result.status == "applied"
 
-    async def test_get_enrolment_not_found(self, db: AsyncSession) -> None:
-        """Récupération d'une candidature inexistante → NotFoundError."""
-        with pytest.raises(NotFoundError):
-            await get_enrolment(db, UNKNOWN_ENROLMENT_ID)
-
     async def test_list_enrolments_for_session(self, db: AsyncSession, test_session: MiraClassSession) -> None:
         """Liste des candidatures d'une session."""
         enrolments = [
@@ -90,12 +92,12 @@ class TestEnrolmentService:
             db.add(enrolment)
         await db.flush()
 
-        items, total = await list_enrolments_for_session(db, test_session.id)
+        items, total = await list_enrolments_for_session(db, test_session.id, MENTOR_USER_ID)
         assert total == 5
         assert len(items) == 5
 
         items_applied, total_applied = await list_enrolments_for_session(
-            db, test_session.id, status="applied"
+            db, test_session.id, MENTOR_USER_ID, status="applied"
         )
         assert total_applied == 3
         assert len(items_applied) == 3
@@ -195,10 +197,10 @@ class TestEnrolmentService:
         db.add(enrolment)
         await db.flush()
 
-        result = await decide_enrolment(db, enrolment.id, USER_B, "accept", "Welcome!")
+        result = await decide_enrolment(db, enrolment.id, MENTOR_USER_ID, "accept", "Welcome!")
 
         assert result.status == "accepted"
-        assert result.decision_by_mentor_id == USER_B
+        assert result.decision_by_mentor_id == MENTOR_USER_ID
         assert result.decision_reason == "Welcome!"
         assert result.decision_at is not None
         assert result.waitlist_position is None
@@ -216,7 +218,7 @@ class TestEnrolmentService:
         await db.flush()
 
         with pytest.raises(ValidationError):
-            await decide_enrolment(db, enrolment.id, USER_B, "reject")
+            await decide_enrolment(db, enrolment.id, MENTOR_USER_ID, "reject")
 
     async def test_decide_enrolment_reject_with_reason(self, db: AsyncSession, test_session: MiraClassSession) -> None:
         """Décision mentor : rejeter avec raison."""
@@ -230,30 +232,85 @@ class TestEnrolmentService:
         db.add(enrolment)
         await db.flush()
 
-        result = await decide_enrolment(db, enrolment.id, USER_B, "reject", "Not suitable")
+        result = await decide_enrolment(db, enrolment.id, MENTOR_USER_ID, "reject", "Not suitable")
 
         assert result.status == "rejected"
         assert result.decision_reason == "Not suitable"
 
+    async def test_list_enrolments_wrong_mentor(self, db: AsyncSession, test_session: MiraClassSession) -> None:
+        """Mentor qui ne possède pas la class → 404 (pas de fuite d'existence)."""
+        with pytest.raises(NotFoundError):
+            await list_enrolments_for_session(db, test_session.id, OTHER_MENTOR_ID)
+
+    async def test_decide_enrolment_wrong_mentor(self, db: AsyncSession, test_session: MiraClassSession) -> None:
+        """Décision par un mentor non propriétaire → NotFoundError."""
+        enrolment = MiraClassEnrolment(
+            session_id=test_session.id,
+            user_id=USER_A,
+            status="applied",
+            application_data={},
+            enrolled_at=_enrolled_now(),
+        )
+        db.add(enrolment)
+        await db.flush()
+
+        with pytest.raises(NotFoundError):
+            await decide_enrolment(db, enrolment.id, OTHER_MENTOR_ID, "accept")
+
+    async def test_get_enrolment_for_mentor_success(self, db: AsyncSession, test_session: MiraClassSession) -> None:
+        enrolment = MiraClassEnrolment(
+            session_id=test_session.id,
+            user_id=USER_A,
+            status="applied",
+            application_data={},
+            enrolled_at=_enrolled_now(),
+        )
+        db.add(enrolment)
+        await db.flush()
+
+        result = await get_enrolment_for_mentor(db, enrolment.id, MENTOR_USER_ID)
+        assert result.id == enrolment.id
+
+    async def test_get_enrolment_for_mentor_wrong_mentor(self, db: AsyncSession, test_session: MiraClassSession) -> None:
+        enrolment = MiraClassEnrolment(
+            session_id=test_session.id,
+            user_id=USER_A,
+            status="applied",
+            application_data={},
+            enrolled_at=_enrolled_now(),
+        )
+        db.add(enrolment)
+        await db.flush()
+
+        with pytest.raises(NotFoundError):
+            await get_enrolment_for_mentor(db, enrolment.id, OTHER_MENTOR_ID)
+
+    async def test_get_enrolment_not_found(self, db: AsyncSession) -> None:
+        """Récupération d'une candidature inexistante → NotFoundError (après tests avec test_session : évite conflit event-loop)."""
+        with pytest.raises(NotFoundError):
+            await get_enrolment(db, _random_uuid())
+
 
 @pytest.mark.asyncio
-class TestEnrolmentEndpoints:
+class Test02EnrolmentEndpoints:
     """Tests d'intégration des endpoints HTTP."""
 
-    async def test_list_session_enrolments_requires_auth(self, client: AsyncClient, test_session: MiraClassSession) -> None:
+    async def test_list_session_enrolments_requires_auth(self, client: AsyncClient) -> None:
         """GET /v1/sessions/{session_id}/enrolments sans auth → 401."""
-        response = await client.get(f"/v1/sessions/{test_session.id}/enrolments")
+        fake_session = "00000000-0000-4000-8000-0000000000aa"
+        response = await client.get(f"/v1/sessions/{fake_session}/enrolments")
         assert response.status_code == 401
 
     async def test_get_enrolment_detail_requires_auth(self, client: AsyncClient) -> None:
         """GET /v1/enrolments/{id} sans auth → 401."""
-        response = await client.get(f"/v1/enrolments/{UNKNOWN_ENROLMENT_ID_HTTP}")
+        response = await client.get(f"/v1/enrolments/{_random_uuid()}")
         assert response.status_code == 401
 
-    async def test_apply_to_session_requires_auth(self, client: AsyncClient, test_session: MiraClassSession) -> None:
+    async def test_apply_to_session_requires_auth(self, client: AsyncClient) -> None:
         """POST /v1/sessions/{session_id}/enrolments sans auth → 401."""
+        fake_session = "00000000-0000-4000-8000-0000000000bb"
         response = await client.post(
-            f"/v1/sessions/{test_session.id}/enrolments",
+            f"/v1/sessions/{fake_session}/enrolments",
             json={"application_data": {}},
         )
         assert response.status_code == 401
@@ -261,7 +318,7 @@ class TestEnrolmentEndpoints:
     async def test_cancel_enrolment_requires_auth(self, client: AsyncClient) -> None:
         """POST /v1/enrolments/{id}/cancel sans auth → 401."""
         response = await client.post(
-            f"/v1/enrolments/{UNKNOWN_ENROLMENT_ID_HTTP}/cancel",
+            f"/v1/enrolments/{_random_uuid()}/cancel",
             json={},
         )
         assert response.status_code == 401
@@ -269,7 +326,7 @@ class TestEnrolmentEndpoints:
     async def test_decide_enrolment_requires_auth(self, client: AsyncClient) -> None:
         """PATCH /v1/enrolments/{id}/decision sans auth → 401."""
         response = await client.patch(
-            f"/v1/enrolments/{UNKNOWN_ENROLMENT_ID_HTTP}/decision",
+            f"/v1/enrolments/{_random_uuid()}/decision",
             json={"decision": "accept"},
         )
         assert response.status_code == 401
@@ -277,9 +334,20 @@ class TestEnrolmentEndpoints:
 
 @pytest_asyncio.fixture
 async def test_session(db: AsyncSession) -> MiraClassSession:
-    """Session de test pour les enrolements."""
+    """Session de test pour les enrolements (class + session uniques par test)."""
+    class_id = str(uuid.uuid4())
+    mira_class = MiraClass(
+        id=class_id,
+        mentor_user_id=MENTOR_USER_ID,
+        title="Test class",
+        description="",
+        status="published",
+    )
+    db.add(mira_class)
+    await db.flush()
+
     session = MiraClassSession(
-        class_id=CLASS_ID,
+        class_id=class_id,
         type="virtual",
         capacity=10,
         waitlist_enabled=True,

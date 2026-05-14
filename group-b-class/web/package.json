@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:webpack": "next dev --webpack",
+    "dev": "node scripts/next-with-clean-env.mjs dev --turbopack",
+    "dev:light": "node scripts/next-with-clean-env.mjs dev --turbopack --disable-source-maps",
+    "dev:webpack": "node scripts/next-with-clean-env.mjs dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit"

@@ -76,4 +76,4 @@ class Settings(BaseSettings):
         return f"{self.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
 
 
-settings = Settings()  # type: ignore[call-arg]
+settings = Settings()

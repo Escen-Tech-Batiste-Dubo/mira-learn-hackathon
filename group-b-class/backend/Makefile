@@ -23,7 +23,7 @@ test:
 
 lint:
 	ruff check app tests
-	mypy app
+	mypy app/
 
 format:
 	ruff format app tests
