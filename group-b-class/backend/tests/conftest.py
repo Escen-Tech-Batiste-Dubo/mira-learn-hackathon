@@ -12,12 +12,15 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from app.core.db import AsyncSessionLocal
-from main import app
 
 
 @pytest_asyncio.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
     """HTTP test client async."""
+    # WHY : import tardif — évite de charger l'app FastAPI (lifespan DB) avant les tests unitaires DB-only,
+    # ce qui provoquait des conflits d'event loop (asyncpg) avec pytest-asyncio sur certaines versions Python.
+    from main import app
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 

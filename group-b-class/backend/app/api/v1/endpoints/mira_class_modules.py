@@ -3,6 +3,8 @@ Routes HTTP pour `mira_class_module`.
 
 Router thin : validation HTTP, auth et sérialisation JSend uniquement.
 """
+from typing import Any
+
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -98,6 +100,7 @@ async def reorder_modules(
 @router.patch(
     "/{class_id}/modules/{module_id}",
     summary="Mettre à jour un module",
+    response_model=None,
 )
 async def update_module(
     class_id: str,
@@ -105,7 +108,7 @@ async def update_module(
     body: MiraClassModuleUpdate,
     service: ModuleService = Depends(get_module_service),
     user: AuthenticatedUser = Depends(require_role("mentor")),
-) -> dict:
+) -> dict[str, Any] | JSONResponse:
     if not body.model_dump(exclude_none=True):
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -1,13 +1,37 @@
 from datetime import datetime, timezone
-from typing import Sequence
+from typing import Any, Sequence
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.models.mira_class import MiraClass
 from app.models.mira_class_enrolment import MiraClassEnrolment
 from app.models.mira_class_session import MiraClassSession
 from app.schemas.enrolment import DecisionType, EnrolmentStatus
+
+
+async def _assert_session_owned_by_mentor(
+    db: AsyncSession,
+    session_id: str,
+    mentor_user_id: str,
+) -> MiraClassSession:
+    """Mentor routes only: session must exist and belong to mentor's class (404 if not)."""
+    stmt = (
+        select(MiraClassSession)
+        .join(MiraClass, MiraClass.id == MiraClassSession.class_id)
+        .where(
+            MiraClassSession.id == session_id,
+            MiraClassSession.deleted_at.is_(None),
+            MiraClass.deleted_at.is_(None),
+            MiraClass.mentor_user_id == mentor_user_id,
+        )
+    )
+    result = await db.execute(stmt)
+    session = result.scalar_one_or_none()
+    if session is None:
+        raise NotFoundError(resource="MiraClassSession", identifier=session_id)
+    return session
 
 
 async def _get_session(db: AsyncSession, session_id: str) -> MiraClassSession:
@@ -58,13 +82,27 @@ async def get_enrolment(db: AsyncSession, enrolment_id: str) -> MiraClassEnrolme
     return enrolment
 
 
+async def get_enrolment_for_mentor(
+    db: AsyncSession,
+    enrolment_id: str,
+    mentor_user_id: str,
+) -> MiraClassEnrolment:
+    """GET enrolment detail (mentor): same 404 if enrolment missing or not owned by mentor."""
+    enrolment = await get_enrolment(db, enrolment_id)
+    await _assert_session_owned_by_mentor(db, enrolment.session_id, mentor_user_id)
+    return enrolment
+
+
 async def list_enrolments_for_session(
     db: AsyncSession,
     session_id: str,
+    mentor_user_id: str,
     status: EnrolmentStatus | None = None,
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[Sequence[MiraClassEnrolment], int]:
+    await _assert_session_owned_by_mentor(db, session_id, mentor_user_id)
+
     stmt = select(MiraClassEnrolment).where(
         MiraClassEnrolment.session_id == session_id,
     )
@@ -84,7 +122,7 @@ async def create_enrolment(
     db: AsyncSession,
     session_id: str,
     user_id: str,
-    application_data: dict,
+    application_data: dict[str, Any],
 ) -> MiraClassEnrolment:
     session = await _get_session(db, session_id)
     if session.status != "open_enrolment":
@@ -149,6 +187,8 @@ async def decide_enrolment(
     reason: str | None = None,
 ) -> MiraClassEnrolment:
     enrolment = await get_enrolment(db, enrolment_id)
+    await _assert_session_owned_by_mentor(db, enrolment.session_id, mentor_id)
+
     if enrolment.status not in ("applied", "waitlist"):
         raise ConflictError(f"Enrolment cannot be decided from status {enrolment.status}")
 

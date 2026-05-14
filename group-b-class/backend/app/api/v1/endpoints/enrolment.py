@@ -1,3 +1,5 @@
+from typing import cast
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +23,7 @@ from app.services.enrolment_service import (
     create_enrolment,
     decide_enrolment,
     get_enrolment,
+    get_enrolment_for_mentor,
     list_enrolments_for_session,
 )
 
@@ -40,6 +43,7 @@ async def list_session_enrolments(
     items, total = await list_enrolments_for_session(
         db,
         session_id=session_id,
+        mentor_user_id=user.user_id,
         status=status,
         limit=page_size,
         offset=offset,
@@ -51,7 +55,7 @@ async def list_session_enrolments(
                     id=e.id,
                     session_id=e.session_id,
                     user_id=e.user_id,
-                    status=e.status,
+                    status=cast(EnrolmentStatus, e.status),
                     waitlist_position=e.waitlist_position,
                     enrolled_at=e.enrolled_at,
                     decision_at=e.decision_at,
@@ -73,7 +77,7 @@ async def get_enrolment_detail(
     db: AsyncSession = Depends(get_db),
     user: AuthenticatedUser = Depends(require_role("mentor")),
 ) -> dict:
-    enrolment = await get_enrolment(db, enrolment_id)
+    enrolment = await get_enrolment_for_mentor(db, enrolment_id, user.user_id)
     return success_response(data=EnrolmentRead.model_validate(enrolment).model_dump())
 
 
@@ -115,6 +119,12 @@ async def decide_enrolment_endpoint(
     user: AuthenticatedUser = Depends(require_role("mentor")),
 ) -> dict:
     enrolment = await decide_enrolment(db, enrolment_id, user.user_id, body.decision, body.reason)
+    decision_at = enrolment.decision_at
+    if decision_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Enrolment decision invariant violated",
+        )
 
     session_stmt = select(MiraClassSession).where(MiraClassSession.id == enrolment.session_id)
     session_result = await db.execute(session_stmt)
@@ -125,8 +135,8 @@ async def decide_enrolment_endpoint(
     return success_response(
         data=EnrolmentDecisionResult(
             enrolment_id=enrolment.id,
-            new_status=enrolment.status,
-            decision_at=enrolment.decision_at,
+            new_status=cast(EnrolmentStatus, enrolment.status),
+            decision_at=decision_at,
             session_enrolment_count=session_enrolment_count,
             session_waitlist_count=session_waitlist_count,
         ).model_dump(),
