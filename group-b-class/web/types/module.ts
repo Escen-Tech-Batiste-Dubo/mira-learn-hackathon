@@ -17,6 +17,8 @@ export interface Module {
   source_outline_id: string | null;
   created_at: string;
   updated_at: string;
+  /** Nombre de QCM actifs (API : 0 ou 1 en MVP). */
+  quiz_count: number;
 }
 
 export interface CreateModulePayload {

@@ -15,6 +15,7 @@ import {
   Trash2,
   Loader2,
   Pencil,
+  Users,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
@@ -183,6 +184,15 @@ function ClassCard({ miraClass,
         <Link href={`/dashboard/classes/${miraClass.id}/edit`}>
           <button className="p-2 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/5 rounded-full transition-all">
             <Pencil className="h-4 w-4" />
+          </button>
+        </Link>
+
+        <Link href={`/dashboard/classes/${miraClass.id}/enrolments`} title="Candidatures">
+          <button
+            type="button"
+            className="p-2 text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/5 rounded-full transition-all"
+          >
+            <Users className="h-4 w-4" />
           </button>
         </Link>
 

@@ -99,7 +99,7 @@ app/some-public-route/page.tsx → /some-public-route
 Sous le **route group** `(authenticated)` (parenthèses = pas dans l'URL, juste regroupement) :
 ```
 app/(authenticated)/me/page.tsx        → /me  (auth requise)
-app/(authenticated)/dashboard/page.tsx → /dashboard  (auth requise)
+app/dashboard/…                        → /dashboard/… (auth mentor dans `dashboard/layout.tsx`)
 ```
 
 Le `app/(authenticated)/layout.tsx` force l'auth (redirige vers `/login` si pas de session).

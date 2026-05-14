@@ -204,11 +204,14 @@ async def require_auth(authorization: str | None = Header(default=None)) -> Auth
         @router.get("/me")
         async def get_me(user: AuthenticatedUser = Depends(require_auth)):
             return user
+
+    # Header optionnel : absence → 401 (évite 422 « champ requis » de FastAPI).
     """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     token = authorization[len("Bearer "):]

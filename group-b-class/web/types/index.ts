@@ -25,6 +25,27 @@ export type MiraClassStatus =
 
 export type MiraClassFormat = "physical" | "virtual" | "both";
 
+/** Alias UI (formulaires mentor) — aligné sur `format_envisaged` du contrat. */
+export type MiraClassDeliveryFormat = MiraClassFormat;
+
+export type SkillCategory = "business" | "design" | "tech" | "soft" | "lifestyle";
+
+export interface Skill {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: SkillCategory;
+  popularity_score: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SkillListResponse {
+  items: Skill[];
+  total: number;
+}
+
 export interface TargetCity {
   name: string;
   country_code: string;
