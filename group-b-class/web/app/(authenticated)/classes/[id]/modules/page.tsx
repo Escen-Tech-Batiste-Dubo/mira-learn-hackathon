@@ -1,21 +1,29 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
-import {
-  type SVGProps,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { type SVGProps, useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 
+import { ModuleDrawer } from "@/components/modules/ModuleDrawer";
+import { ModuleInlineFields } from "@/components/modules/ModuleInlineFields";
+import { ModuleMaterialDrawer } from "@/components/modules/ModuleMaterialDrawer";
+import { ModuleSortableList } from "@/components/modules/ModuleSortableList";
 import {
   useDeleteModule,
   useModules,
   useReorderModules,
 } from "@/hooks/useModules";
-import { ModuleDrawer } from "@/components/modules/ModuleDrawer";
+import { apiClient } from "@/lib/api-client";
+import type { MiraClass, MiraClassStatus } from "@/types";
 import type { Module, ModuleType } from "@/types/module";
+
+type SessionOption = {
+  id: string;
+  starts_at: string;
+  location_city?: string | null;
+  location_country?: string | null;
+};
 
 type ToastState =
   | {
@@ -30,6 +38,18 @@ const MODULE_TYPE_LABELS: Record<ModuleType, string> = {
   exercise: "Exercice",
   discussion: "Discussion",
   workshop: "Atelier",
+};
+
+/** Libellés courts pour la ligne meta (statut Mira Class), alignés template-overview. */
+const CLASS_STATUS_LABELS: Record<MiraClassStatus, string> = {
+  draft: "Brouillon",
+  submitted: "Soumis",
+  in_review: "En revue",
+  validated_draft: "Validé (brouillon)",
+  enrichment_in_progress: "Enrichissement",
+  published: "Publié",
+  rejected: "Refusé",
+  archived: "Archivé",
 };
 
 function getErrorMessage(fallback: string): string {
@@ -47,17 +67,6 @@ function formatDurationHours(durationHours: number | string): string {
   return `${formattedValue}h`;
 }
 
-function reorderLocally(modules: Module[], fromIndex: number, toIndex: number): Module[] {
-  const reordered = [...modules];
-  const [moved] = reordered.splice(fromIndex, 1);
-  reordered.splice(toIndex, 0, moved);
-
-  return reordered.map((module, index) => ({
-    ...module,
-    position: index + 1,
-  }));
-}
-
 function GripVerticalIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
@@ -67,43 +76,6 @@ function GripVerticalIcon(props: SVGProps<SVGSVGElement>) {
       <circle cx="15" cy="12" r="1" />
       <circle cx="9" cy="18" r="1" />
       <circle cx="15" cy="18" r="1" />
-    </svg>
-  );
-}
-
-function PencilIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
-    </svg>
-  );
-}
-
-function Trash2Icon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <path d="M3 6h18" />
-      <path d="M8 6V4h8v2" />
-      <path d="M19 6l-1 14H6L5 6" />
-      <path d="M10 11v6" />
-      <path d="M14 11v6" />
-    </svg>
-  );
-}
-
-function ArrowUpIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <path d="m18 15-6-6-6 6" />
-    </svg>
-  );
-}
-
-function ArrowDownIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-      <path d="m6 9 6 6 6-6" />
     </svg>
   );
 }
@@ -126,14 +98,99 @@ export default function ModulesPage() {
   const { deleteModule, isLoading: isDeleting } = useDeleteModule(classId);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editingModule, setEditingModule] = useState<Module | null>(null);
+  const [inlineEditId, setInlineEditId] = useState<string | null>(null);
+  const [materialModule, setMaterialModule] = useState<Module | null>(null);
+  const [sessions, setSessions] = useState<SessionOption[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
   const [confirmingModuleId, setConfirmingModuleId] = useState<string | null>(null);
   const [localModules, setLocalModules] = useState<Module[]>([]);
   const [toast, setToast] = useState<ToastState>(null);
+  const [classDetail, setClassDetail] = useState<MiraClass | null>(null);
+  const [materialCounts, setMaterialCounts] = useState<Record<string, number>>({});
+
+  const refetchMaterialCounts = useCallback(async () => {
+    if (!classId) {
+      return;
+    }
+    try {
+      const data = await apiClient.get<{ counts: Record<string, number> }>(
+        `/v1/classes/${classId}/module-material-counts`,
+      );
+      setMaterialCounts(data.counts ?? {});
+    } catch {
+      setMaterialCounts({});
+    }
+  }, [classId]);
+
+  useEffect(() => {
+    void refetchMaterialCounts();
+  }, [refetchMaterialCounts]);
 
   useEffect(() => {
     setLocalModules(modules);
   }, [modules]);
+
+  const sortedModules = useMemo(
+    () => [...localModules].sort((left, right) => left.position - right.position),
+    [localModules],
+  );
+
+  const quizCountByModuleId = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const m of sortedModules) {
+      out[m.id] = m.quiz_count;
+    }
+    return out;
+  }, [sortedModules]);
+
+  useEffect(() => {
+    if (!classId) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const cls = await apiClient.get<MiraClass>(`/v1/classes/${classId}`);
+        if (!cancelled) {
+          setClassDetail(cls);
+        }
+      } catch {
+        if (!cancelled) {
+          setClassDetail(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [classId]);
+
+  useEffect(() => {
+    if (!classId) {
+      return;
+    }
+    let cancelled = false;
+    setSessionsLoading(true);
+    void (async () => {
+      try {
+        const list = await apiClient.get<SessionOption[]>(`/v1/classes/${classId}/sessions`);
+        if (!cancelled) {
+          setSessions(Array.isArray(list) ? list : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setSessions([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setSessionsLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [classId]);
 
   useEffect(() => {
     if (!toast) {
@@ -149,52 +206,54 @@ export default function ModulesPage() {
     };
   }, [toast]);
 
-  const sortedModules = useMemo(
-    () => [...localModules].sort((left, right) => left.position - right.position),
-    [localModules],
-  );
   const hasReachedModuleLimit = modules.length >= 12;
 
-  const openCreateDrawer = useCallback(() => {
-    setEditingModule(null);
-    setDrawerOpen(true);
-  }, []);
+  const classStatusLabel = classDetail
+    ? CLASS_STATUS_LABELS[classDetail.status]
+    : "…";
 
-  const openEditDrawer = useCallback((module: Module) => {
-    setEditingModule(module);
+  const resourceCountByModuleId = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const m of sortedModules) {
+      out[m.id] = materialCounts[m.id] ?? 0;
+    }
+    return out;
+  }, [sortedModules, materialCounts]);
+
+  const openCreateDrawer = useCallback(() => {
     setDrawerOpen(true);
   }, []);
 
   const closeDrawer = useCallback(() => {
     setDrawerOpen(false);
-    setEditingModule(null);
   }, []);
 
-  const handleMoveModule = useCallback(
-    async (moduleId: string, direction: "up" | "down"): Promise<void> => {
-      const currentIndex = sortedModules.findIndex((module) => module.id === moduleId);
-      if (currentIndex === -1) {
-        return;
-      }
+  const toggleInlineEdit = useCallback((moduleId: string) => {
+    setInlineEditId((current) => (current === moduleId ? null : moduleId));
+  }, []);
 
-      const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-      if (targetIndex < 0 || targetIndex >= sortedModules.length) {
-        return;
-      }
+  const openMaterialDrawer = useCallback((module: Module) => {
+    setInlineEditId(null);
+    setMaterialModule(module);
+  }, []);
 
-      const previousModules = sortedModules;
-      const reorderedModules = reorderLocally(sortedModules, currentIndex, targetIndex);
-      setLocalModules(reorderedModules);
+  const closeMaterialDrawer = useCallback(() => {
+    setMaterialModule(null);
+  }, []);
 
+  const handleReorderFromDnd = useCallback(
+    async (reordered: Module[]): Promise<void> => {
+      const previous = sortedModules;
+      setLocalModules(reordered);
       try {
-        await reorderModules(reorderedModules.map((module) => module.id));
-        setToast({ kind: "success", message: "Ordre mis a jour" });
+        await reorderModules(reordered.map((m) => m.id));
+        setToast({ kind: "success", message: "Ordre mis à jour" });
       } catch {
-        setLocalModules(previousModules);
+        setLocalModules(previous);
         mutate();
         setToast({
           kind: "error",
-          message: getErrorMessage("Hmm, on n'a pas reussi a reordonner les modules. Reessaie ?"),
+          message: getErrorMessage("Hmm, on n'a pas réussi à réordonner les modules. Réessaie ?"),
         });
       }
     },
@@ -214,11 +273,11 @@ export default function ModulesPage() {
             })),
         );
         setConfirmingModuleId(null);
-        setToast({ kind: "success", message: "Module supprime" });
+        setToast({ kind: "success", message: "Module supprimé" });
       } catch {
         setToast({
           kind: "error",
-          message: getErrorMessage("Hmm, on n'a pas reussi a supprimer ce module. Reessaie ?"),
+          message: getErrorMessage("Hmm, on n'a pas réussi à supprimer ce module. Réessaie ?"),
         });
       }
     },
@@ -230,13 +289,23 @@ export default function ModulesPage() {
       {toast ? <Toast toast={toast} /> : null}
 
       <div className="mx-auto max-w-4xl px-6 py-8">
+        {classId ? (
+          <Link
+            href="/dashboard/classes"
+            className="mb-6 inline-flex items-center gap-2 text-sm text-[#888888] transition-colors hover:text-[#E6332A]"
+          >
+            <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+            Retour aux classes
+          </Link>
+        ) : null}
+
         <div className="flex items-center justify-between gap-4 border-b border-[#E5E7EB] pb-6">
           <div>
             <h1 className="font-[Playfair_Display] text-2xl font-bold text-[#1D1D1B]">
               Modules
             </h1>
             <p className="mt-2 text-sm text-[#888888]">
-              Organise la progression pedagogique de ta Mira Class.
+              Organise la progression pédagogique de ta Mira Class.
             </p>
           </div>
 
@@ -248,7 +317,7 @@ export default function ModulesPage() {
               title={hasReachedModuleLimit ? "Maximum 12 modules atteint" : undefined}
               type="button"
             >
-              + Ajouter
+              + Nouveau module
             </button>
             {hasReachedModuleLimit ? (
               <p className="text-xs text-[#888888]">Maximum 12 modules atteint</p>
@@ -262,7 +331,7 @@ export default function ModulesPage() {
               {[0, 1, 2].map((item) => (
                 <div
                   key={item}
-                  className="h-20 animate-pulse rounded-xl bg-[#E2DCD3]"
+                  className="h-24 animate-pulse rounded-xl bg-[#E2DCD3]"
                 />
               ))}
             </div>
@@ -270,13 +339,13 @@ export default function ModulesPage() {
 
           {!isLoading && error && sortedModules.length === 0 ? (
             <div className="rounded-xl border border-[#E5E7EB] bg-white p-6">
-              <p className="text-sm text-[#1D1D1B]">{getErrorMessage("Hmm, on n'a pas reussi a charger les modules.")}</p>
+              <p className="text-sm text-[#1D1D1B]">{getErrorMessage("Hmm, on n'a pas réussi à charger les modules.")}</p>
               <button
                 className="mt-4 h-[44px] rounded-lg border border-[#B6B0A6] bg-white px-4 text-[#1D1D1B] hover:bg-[#E2DCD3]"
                 onClick={mutate}
                 type="button"
               >
-                Reessayer
+                Réessayer
               </button>
             </div>
           ) : null}
@@ -285,7 +354,7 @@ export default function ModulesPage() {
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <GripVerticalIcon className="h-12 w-12 text-[#888888]" />
               <h2 className="mt-4 text-base font-semibold text-[#1D1D1B]">
-                Aucun module pour l'instant.
+                Aucun module pour l&apos;instant.
               </h2>
               <p className="mt-2 text-xs text-[#888888]">
                 Commence par ajouter ton premier module.
@@ -295,126 +364,91 @@ export default function ModulesPage() {
                 onClick={openCreateDrawer}
                 type="button"
               >
-                + Ajouter un module
+                + Nouveau module
               </button>
             </div>
           ) : null}
 
           {!isLoading && sortedModules.length > 0 ? (
-            <div className="space-y-4">
-              {sortedModules.map((module, index) => (
-                <div
-                  key={module.id}
-                  className="rounded-xl border border-[#E5E7EB] bg-white p-4"
-                >
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <GripVerticalIcon className="h-5 w-5 cursor-grab text-[#B6B0A6]" />
-                      <div className="flex flex-col gap-1">
-                        <button
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[#1D1D1B] hover:bg-[#E2DCD3]"
-                          disabled={index === 0 || isReordering}
-                          onClick={() => void handleMoveModule(module.id, "up")}
-                          type="button"
-                        >
-                          <ArrowUpIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[#1D1D1B] hover:bg-[#E2DCD3]"
-                          disabled={index === sortedModules.length - 1 || isReordering}
-                          onClick={() => void handleMoveModule(module.id, "down")}
-                          type="button"
-                        >
-                          <ArrowDownIcon className="h-4 w-4" />
-                        </button>
-                      </div>
+            <ModuleSortableList
+              classStatusLabel={classStatusLabel}
+              disabled={isReordering}
+              formatDurationHours={formatDurationHours}
+              inlineEditOpenId={inlineEditId}
+              moduleTypeLabels={MODULE_TYPE_LABELS}
+              modules={sortedModules}
+              onOpenMaterial={openMaterialDrawer}
+              onReorder={handleReorderFromDnd}
+              onToggleDeleteConfirm={(moduleId) =>
+                setConfirmingModuleId((current) => (current === moduleId ? null : moduleId))
+              }
+              onToggleInlineEdit={toggleInlineEdit}
+              quizCountByModuleId={quizCountByModuleId}
+              renderAfterRow={(module) => (
+                <ModuleInlineFields
+                  classId={classId}
+                  module={module}
+                  onClose={() => setInlineEditId(null)}
+                  onSaveError={(message) => setToast({ kind: "error", message })}
+                  onSaved={() => {
+                    setToast({ kind: "success", message: "Module mis à jour" });
+                    void mutate();
+                  }}
+                />
+              )}
+              renderConfirmDelete={(module) =>
+                confirmingModuleId === module.id ? (
+                  <div className="mt-4 rounded-xl border border-[#E5E7EB] bg-[#FAFAF9] p-4">
+                    <p className="text-sm font-semibold text-[#1D1D1B]">
+                      Supprimer ce module ?
+                    </p>
+                    <p className="mt-1 text-xs text-[#888888]">
+                      Cette action retire le module de la liste actuelle.
+                    </p>
+                    <div className="mt-4 flex items-center justify-end gap-3">
+                      <button
+                        className="h-[44px] rounded-lg border border-[#B6B0A6] bg-white px-4 text-[#1D1D1B] hover:bg-[#E2DCD3]"
+                        disabled={isReordering}
+                        onClick={() => setConfirmingModuleId(null)}
+                        type="button"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        className="h-[44px] rounded-lg bg-[#E6332A] px-4 text-white"
+                        disabled={isDeleting || isReordering}
+                        onClick={() => void handleDeleteModule(module.id)}
+                        type="button"
+                      >
+                        Supprimer
+                      </button>
                     </div>
-
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E2DCD3] text-xs font-medium text-[#1D1D1B]">
-                      {module.position}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-[#1D1D1B]">
-                          {module.title}
-                        </p>
-                        <span className="rounded-full bg-[#E2DCD3] px-3 py-1 text-xs text-[#1D1D1B]">
-                          {MODULE_TYPE_LABELS[module.type]}
-                        </span>
-                        <span className="text-xs text-[#888888]">
-                          {formatDurationHours(module.duration_hours)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <button
-                      aria-label={`Modifier ${module.title}`}
-                      className="flex h-[44px] w-[44px] items-center justify-center text-[#E6332A] hover:bg-[#E2DCD3]"
-                      disabled={isReordering}
-                      onClick={() => openEditDrawer(module)}
-                      type="button"
-                    >
-                      <PencilIcon className="h-5 w-5" />
-                    </button>
-
-                    <button
-                      aria-label={`Supprimer ${module.title}`}
-                      className="flex h-[44px] w-[44px] items-center justify-center text-[#888888] hover:bg-[#E2DCD3] hover:text-[#EF4444]"
-                      disabled={isReordering}
-                      onClick={() =>
-                        setConfirmingModuleId((current) =>
-                          current === module.id ? null : module.id,
-                        )
-                      }
-                      type="button"
-                    >
-                      <Trash2Icon className="h-5 w-5" />
-                    </button>
                   </div>
-
-                  {confirmingModuleId === module.id ? (
-                    <div className="mt-4 rounded-xl border border-[#E5E7EB] bg-white p-4">
-                      <p className="text-sm font-semibold text-[#1D1D1B]">
-                        Supprimer ce module ?
-                      </p>
-                      <p className="mt-1 text-xs text-[#888888]">
-                        Cette action retire le module de la liste actuelle.
-                      </p>
-                      <div className="mt-4 flex items-center justify-end gap-3">
-                        <button
-                          className="h-[44px] rounded-lg border border-[#B6B0A6] bg-white px-4 text-[#1D1D1B] hover:bg-[#E2DCD3]"
-                          disabled={isReordering}
-                          onClick={() => setConfirmingModuleId(null)}
-                          type="button"
-                        >
-                          Annuler
-                        </button>
-                        <button
-                          className="h-[44px] rounded-lg bg-[#E6332A] px-4 text-white"
-                          disabled={isDeleting || isReordering}
-                          onClick={() => void handleDeleteModule(module.id)}
-                          type="button"
-                        >
-                          Supprimer
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-            </div>
+                ) : null
+              }
+              resourceCountByModuleId={resourceCountByModuleId}
+            />
           ) : null}
         </div>
       </div>
 
       <ModuleDrawer
         classId={classId}
-        module={editingModule ?? undefined}
         nextPosition={sortedModules.length + 1}
         onClose={closeDrawer}
         onSuccess={mutate}
         open={drawerOpen}
+      />
+
+      <ModuleMaterialDrawer
+        classId={classId}
+        moduleId={materialModule?.id ?? ""}
+        moduleTitle={materialModule?.title ?? ""}
+        onClose={closeMaterialDrawer}
+        onSaved={() => void refetchMaterialCounts()}
+        open={materialModule !== null}
+        sessions={sessions}
+        sessionsLoading={sessionsLoading}
       />
     </div>
   );

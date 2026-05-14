@@ -1,7 +1,9 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import { apiClient, ApiError } from "@/lib/api-client";
@@ -43,8 +45,10 @@ function buildDraftsFromResult(quiz: QuizDetailRead): Record<string, QuestionDra
  * Ici : après génération, l’aperçu apprenant est le flux principal ; la correction détaillée
  * n’apparaît qu’après « Valider » (local, pas une tentative serveur). La vue mentor est en repliable.
  */
-export default function NewModuleQuizPage() {
+function NewModuleQuizPageContent() {
   const params = useParams<{ moduleId: string }>();
+  const searchParams = useSearchParams();
+  const classIdFromQuery = searchParams.get("classId");
   const moduleId = params.moduleId;
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -139,10 +143,24 @@ export default function NewModuleQuizPage() {
     [result, drafts],
   );
 
+  const modulesBackHref =
+    classIdFromQuery && classIdFromQuery.length > 0
+      ? `/dashboard/classes/${classIdFromQuery}/modules`
+      : "/dashboard/classes";
+  const modulesBackLabel =
+    classIdFromQuery && classIdFromQuery.length > 0 ? "Retour aux modules" : "Retour aux classes";
+
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
+    <div className="mx-auto max-w-3xl space-y-8 py-8 px-4">
       <header className="space-y-2">
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-[var(--color-foreground)]">
+        <Link
+          href={modulesBackHref}
+          className="inline-flex items-center gap-2 text-sm text-[var(--muted-foreground)] transition-colors hover:text-[var(--primary)]"
+        >
+          <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+          {modulesBackLabel}
+        </Link>
+        <h1 className="mt-4 font-serif text-3xl font-bold tracking-tight text-[var(--color-foreground)]">
           Nouveau QCM
         </h1>
         <p className="text-sm text-[var(--color-muted-foreground)]">
@@ -470,5 +488,19 @@ export default function NewModuleQuizPage() {
         </div>
       ) : null}
     </div>
+  );
+}
+
+export default function NewModuleQuizPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-3xl px-4 py-16 text-center text-sm text-[var(--muted-foreground)]">
+          Chargement…
+        </div>
+      }
+    >
+      <NewModuleQuizPageContent />
+    </Suspense>
   );
 }

@@ -88,6 +88,21 @@ export default function EditMiraClassPage() {
         <Link href="/dashboard/classes" className="inline-flex items-center gap-2 text-sm text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors">
           <ArrowLeft className="h-4 w-4" /> Retour aux classes
         </Link>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link
+            href={`/dashboard/classes/${id}/modules`}
+            className="text-xs font-semibold uppercase tracking-wide text-[var(--primary)] hover:underline"
+          >
+            Modules
+          </Link>
+          <span className="text-[var(--muted-foreground)]">·</span>
+          <Link
+            href={`/dashboard/classes/${id}/enrolments`}
+            className="text-xs font-semibold uppercase tracking-wide text-[var(--primary)] hover:underline"
+          >
+            Candidatures
+          </Link>
+        </div>
         <h1 className="mt-4 font-serif text-4xl font-bold italic">Modifier la Mira Class</h1>
       </header>
 

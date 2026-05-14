@@ -1,4 +1,10 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import type { NextConfig } from "next";
+
+/** Répertoire de ce fichier (évite que Turbopack prenne un lockfile parent, ex. `~/package-lock.json`). */
+const WEB_ROOT = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * MIGRATION HINT (post-hackathon) :
@@ -13,6 +19,9 @@ import type { NextConfig } from "next";
  */
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  turbopack: {
+    root: WEB_ROOT,
+  },
 };
 
 export default nextConfig;

@@ -139,7 +139,7 @@ export function SessionCard({
         {/* Action Button */}
         <div className="pt-2">
           <Link href={`/dashboard/sessions/${id}`}>
-            <Button size="sm" className="w-full" variant="outline">
+            <Button className="h-9 w-full text-sm" variant="outline">
               Voir & Éditer
             </Button>
           </Link>

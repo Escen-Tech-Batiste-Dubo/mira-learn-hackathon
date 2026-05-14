@@ -210,7 +210,7 @@ export default function SessionsPage() {
                     </TableCell>
                     <TableCell>
                       <Link href={`/dashboard/sessions/${session.id}`}>
-                        <Button variant="ghost" size="sm" className="text-xs">
+                        <Button variant="ghost" className="h-8 px-2 text-xs">
                           Gérer →
                         </Button>
                       </Link>

@@ -9,8 +9,9 @@ import type {
   UpdateModulePayload,
 } from "@/types/module";
 
-type ApiModule = Omit<Module, "duration_hours"> & {
+type ApiModule = Omit<Module, "duration_hours" | "quiz_count"> & {
   duration_hours: number | string;
+  quiz_count?: number;
 };
 
 type ModulesResponse = {
@@ -72,9 +73,15 @@ function normalizeModule(module: ApiModule): Module {
     throw new Error("Invalid module duration");
   }
 
+  const quizCount =
+    typeof module.quiz_count === "number" && Number.isFinite(module.quiz_count)
+      ? module.quiz_count
+      : 0;
+
   return {
     ...module,
     duration_hours: durationHours,
+    quiz_count: quizCount,
   };
 }
 
