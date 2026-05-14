@@ -39,6 +39,10 @@ async def test_list_modules_returns_success_for_owned_seeded_class(client) -> No
     assert all(
         module["class_id"] == "33333333-0001-0000-0000-000000000001" for module in modules
     )
+    for module in modules:
+        assert "quiz_count" in module
+        assert isinstance(module["quiz_count"], int)
+        assert module["quiz_count"] in (0, 1)
 
 
 async def test_admin_cannot_access_mentor_modules_route(client) -> None:
@@ -52,3 +56,32 @@ async def test_admin_cannot_access_mentor_modules_route(client) -> None:
     body = response.json()
     assert body["status"] == "fail"
     assert body["data"]["detail"] == "Forbidden: requires role in ('mentor',)"
+
+
+async def test_reorder_modules_returns_200_jsend(client) -> None:
+    """PATCH reorder doit sérialiser sans MissingGreenlet (refresh post-commit)."""
+    app.dependency_overrides[require_auth] = _fake_antoine_auth
+    try:
+        list_resp = await client.get("/v1/classes/33333333-0001-0000-0000-000000000001/modules")
+        assert list_resp.status_code == 200
+        modules = list_resp.json()["data"]["modules"]
+        if len(modules) < 2:
+            return
+        ids = [m["id"] for m in sorted(modules, key=lambda x: x["position"])]
+        rev = list(reversed(ids))
+        reorder_resp = await client.patch(
+            "/v1/classes/33333333-0001-0000-0000-000000000001/modules/reorder",
+            json={"module_ids_in_order": rev},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert reorder_resp.status_code == 200
+    body = reorder_resp.json()
+    assert body["status"] == "success"
+    out = body["data"]["modules"]
+    assert [m["id"] for m in sorted(out, key=lambda x: x["position"])] == rev
+    for m in out:
+        assert "quiz_count" in m
+        assert isinstance(m["quiz_count"], int)
+        assert m["quiz_count"] in (0, 1)

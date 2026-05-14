@@ -11,10 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.mira_class import MiraClass
 from app.models.module import MiraClassModule
+from app.models.quiz import MiraClassModuleQuiz
 from app.schemas.module import MiraClassModuleCreate, MiraClassModuleReorder, MiraClassModuleUpdate
 
 EDITABLE_CLASS_STATUSES = frozenset(
     {
+        "draft",  # WHY : classes créées côté mentor (MVP) restent en draft jusqu'au premier enrichissement
         "validated_draft",
         "enrichment_in_progress",
         "published",
@@ -26,6 +28,8 @@ EDITABLE_MODULE_FIELDS = frozenset({"title", "description", "type", "duration_ho
 
 MODULE_CREATION_STATUS_TRANSITIONS = {
     "validated_draft": "enrichment_in_progress",
+    # WHY : même transition que validated_draft — premier module = début de l'enrichissement (hors workflow A en hackathon)
+    "draft": "enrichment_in_progress",
 }
 
 
@@ -84,6 +88,18 @@ class ModuleService:
         )
         count = (await self.db.execute(stmt)).scalar_one_or_none()
         return int(count or 0)
+
+    async def quiz_counts_for_module_ids(self, module_ids: list[str]) -> dict[str, int]:
+        """Nombre de QCM actifs (non soft-deleted) par module_id — MVP : 0 ou 1 par module."""
+        if not module_ids:
+            return {}
+        stmt = select(MiraClassModuleQuiz.module_id).where(
+            MiraClassModuleQuiz.module_id.in_(module_ids),
+            MiraClassModuleQuiz.deleted_at.is_(None),
+        )
+        result = await self.db.execute(stmt)
+        with_quiz = set(result.scalars().all())
+        return {mid: (1 if mid in with_quiz else 0) for mid in module_ids}
 
     async def _get_class_modules(self, class_id: str) -> list[MiraClassModule]:
         stmt = select(MiraClassModule).where(MiraClassModule.class_id == class_id)
@@ -272,6 +288,10 @@ class ModuleService:
         ordered_active_modules = sorted(active_modules, key=lambda module: requested_positions[module.id])
         await self._persist_module_order(class_modules, ordered_active_modules)
         await self.db.commit()
+        # WHY : après commit, Pydantic `model_validate(orm)` dans le router peut déclencher un lazy-load
+        # async (`MissingGreenlet` → 500) ; aligné sur create_module / update_module qui font `refresh`.
+        for module in ordered_active_modules:
+            await self.db.refresh(module)
         return ordered_active_modules
 
     async def delete_module(self, class_id: str, module_id: str, user_id: str) -> None:

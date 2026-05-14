@@ -41,5 +41,6 @@ class MiraClassModuleRead(MiraClassModuleBase):
     source_outline_id: Optional[str]
     created_at: datetime
     updated_at: datetime
+    quiz_count: int = Field(0, ge=0, description="Nombre de QCM actifs liés au module (MVP : 0 ou 1)")
 
     model_config = ConfigDict(from_attributes=True)

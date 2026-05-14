@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import AuthenticatedUser, require_role
 from app.core.db import get_db
+from app.models.module import MiraClassModule
 from app.core.responses import fail_response, success_response
 from app.schemas.module import (
     MiraClassModuleCreate,
@@ -19,6 +20,14 @@ from app.schemas.module import (
 from app.services.module_service import ModuleService
 
 router = APIRouter()
+
+
+def _serialize_module_read(module: MiraClassModule, quiz_count: int) -> dict:
+    return (
+        MiraClassModuleRead.model_validate(module)
+        .model_copy(update={"quiz_count": quiz_count})
+        .model_dump(mode="json")
+    )
 
 
 def get_module_service(db: AsyncSession = Depends(get_db)) -> ModuleService:
@@ -33,10 +42,11 @@ async def list_modules(
     user: AuthenticatedUser = Depends(require_role("mentor")),
 ) -> dict:
     modules = await service.list_modules(class_id, user.user_id)
+    counts = await service.quiz_counts_for_module_ids([m.id for m in modules])
     return success_response(
         data={
             "modules": [
-                MiraClassModuleRead.model_validate(module).model_dump(mode="json")
+                _serialize_module_read(module, counts.get(module.id, 0))
                 for module in modules
             ]
         }
@@ -55,9 +65,10 @@ async def create_module(
     user: AuthenticatedUser = Depends(require_role("mentor")),
 ) -> dict:
     module = await service.create_module(class_id, body, user.user_id)
+    counts = await service.quiz_counts_for_module_ids([module.id])
     return success_response(
         data={
-            "module": MiraClassModuleRead.model_validate(module).model_dump(mode="json"),
+            "module": _serialize_module_read(module, counts.get(module.id, 0)),
         }
     )
 
@@ -73,10 +84,11 @@ async def reorder_modules(
     user: AuthenticatedUser = Depends(require_role("mentor")),
 ) -> dict:
     modules = await service.reorder_modules(class_id, body, user.user_id)
+    counts = await service.quiz_counts_for_module_ids([m.id for m in modules])
     return success_response(
         data={
             "modules": [
-                MiraClassModuleRead.model_validate(module).model_dump(mode="json")
+                _serialize_module_read(module, counts.get(module.id, 0))
                 for module in modules
             ]
         }
@@ -101,9 +113,10 @@ async def update_module(
         )
 
     module = await service.update_module(class_id, module_id, body, user.user_id)
+    counts = await service.quiz_counts_for_module_ids([module.id])
     return success_response(
         data={
-            "module": MiraClassModuleRead.model_validate(module).model_dump(mode="json"),
+            "module": _serialize_module_read(module, counts.get(module.id, 0)),
         }
     )
 
