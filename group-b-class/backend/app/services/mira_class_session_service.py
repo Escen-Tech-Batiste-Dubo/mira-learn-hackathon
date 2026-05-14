@@ -174,7 +174,7 @@ class MiraClassSessionService:
                 "class_id",
             )
 
-        result = await db.execute(
+        sessions_result = await db.execute(
             select(MiraClassSession)
             .where(
                 and_(
@@ -185,7 +185,7 @@ class MiraClassSessionService:
             .order_by(MiraClassSession.starts_at)
         )
 
-        return result.scalars().all()
+        return list(sessions_result.scalars().all())
 
     @staticmethod
     async def list_all_sessions_for_mentor(
@@ -207,7 +207,7 @@ class MiraClassSessionService:
         if not class_ids:
             return []
 
-        result = await db.execute(
+        sessions_result = await db.execute(
             select(MiraClassSession)
             .where(
                 and_(
@@ -218,7 +218,7 @@ class MiraClassSessionService:
             .order_by(MiraClassSession.starts_at)
         )
 
-        return result.scalars().all()
+        return list(sessions_result.scalars().all())
 
     @staticmethod
     async def get_session(

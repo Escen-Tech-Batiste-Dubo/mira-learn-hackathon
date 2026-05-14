@@ -177,7 +177,7 @@ export default function ClassEnrolmentsPage() {
         qs.set("status", statusFilter);
       }
       const data = await apiClient.get<EnrolmentListResponse>(
-        `/v1/enrolments/sessions/${sessionId}/enrolments?${qs.toString()}`,
+        `/v1/sessions/${sessionId}/enrolments?${qs.toString()}`,
       );
       setList(data.items);
       setTotal(data.total);
@@ -207,7 +207,7 @@ export default function ClassEnrolmentsPage() {
     setActingId(enrolmentId);
     setError(null);
     try {
-      await apiClient.patch(`/v1/enrolments/enrolments/${enrolmentId}/decision`, {
+      await apiClient.patch(`/v1/enrolments/${enrolmentId}/decision`, {
         decision,
         reason: reason ?? null,
       });
