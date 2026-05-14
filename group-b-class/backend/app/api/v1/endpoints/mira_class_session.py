@@ -1,5 +1,5 @@
 """FastAPI endpoints for mira_class_session (Group B)."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import AuthenticatedUser, require_role

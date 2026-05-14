@@ -190,8 +190,9 @@ async def test_create_does_not_transition_if_already_enrichment() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_raises_409_class_in_draft_status() -> None:
-    cls = _make_class("mentor-1", status="draft")
+async def test_create_raises_409_class_not_enrichable() -> None:
+    """Statuts hors enrichissement (ex. archivé) → 409."""
+    cls = _make_class("mentor-1", status="archived")
     db = _make_db(_ScalarResult(cls))
 
     service = ModuleService(db)
@@ -207,6 +208,30 @@ async def test_create_raises_409_class_in_draft_status() -> None:
         await service.create_module(cls.id, body, "mentor-1")
 
     assert exc_info.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_create_draft_class_transitions_to_enrichment() -> None:
+    """MVP : une class en draft peut recevoir un premier module (→ enrichment_in_progress)."""
+    cls = _make_class("mentor-1", status="draft")
+    db = _make_db(
+        _ScalarResult(cls),
+        _ScalarResult(0),
+        _ScalarsResult([]),
+    )
+
+    service = ModuleService(db)
+    body = MiraClassModuleCreate(
+        position=1,
+        title="Intro",
+        description="",
+        type="theory",
+        duration_hours=Decimal("2.0"),
+    )
+
+    await service.create_module(cls.id, body, "mentor-1")
+
+    assert cls.status == "enrichment_in_progress"
 
 
 @pytest.mark.asyncio
