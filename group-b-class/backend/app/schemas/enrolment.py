@@ -92,3 +92,32 @@ class EnrolmentListResponse(BaseModel):
     page: int
     page_size: int
     has_more: bool
+
+
+class MentorEnrolmentListItem(BaseModel):
+    """Ligne agrégée GET /v1/me/enrolments (toutes sessions du mentor)."""
+
+    id: str
+    session_id: str
+    class_id: str
+    class_title: str
+    session_starts_at: datetime
+    session_status: str
+    location_city: Optional[str] = None
+    location_country: Optional[str] = None
+    user_id: str
+    status: EnrolmentStatus
+    waitlist_position: Optional[int] = None
+    enrolled_at: datetime
+    decision_at: Optional[datetime] = None
+    decision_reason: Optional[str] = None
+
+
+class MentorEnrolmentListResponse(BaseModel):
+    """Réponse paginée de GET /v1/me/enrolments."""
+
+    items: list[MentorEnrolmentListItem]
+    total: int
+    page: int
+    page_size: int
+    has_more: bool

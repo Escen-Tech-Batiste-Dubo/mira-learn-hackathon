@@ -118,6 +118,45 @@ async def list_enrolments_for_session(
     return items, total
 
 
+def _mentor_enrolments_base_select(
+    mentor_user_id: str,
+    status: EnrolmentStatus | None,
+):
+    stmt = (
+        select(MiraClassEnrolment, MiraClassSession, MiraClass)
+        .join(MiraClassSession, MiraClassEnrolment.session_id == MiraClassSession.id)
+        .join(MiraClass, MiraClassSession.class_id == MiraClass.id)
+        .where(
+            MiraClass.mentor_user_id == mentor_user_id,
+            MiraClassSession.deleted_at.is_(None),
+            MiraClass.deleted_at.is_(None),
+        )
+    )
+    if status is not None:
+        stmt = stmt.where(MiraClassEnrolment.status == status)
+    return stmt
+
+
+async def list_enrolments_for_mentor_aggregate(
+    db: AsyncSession,
+    mentor_user_id: str,
+    status: EnrolmentStatus | None = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[Sequence[tuple[MiraClassEnrolment, MiraClassSession, MiraClass]], int]:
+    """Toutes les candidatures des sessions des classes du mentor (vue CRM Apprenants)."""
+    base = _mentor_enrolments_base_select(mentor_user_id, status)
+    count_stmt = select(func.count()).select_from(base.subquery())
+    total = (await db.execute(count_stmt)).scalar_one() or 0
+
+    data_stmt = (
+        base.order_by(MiraClassEnrolment.enrolled_at.desc()).offset(offset).limit(limit)
+    )
+    result = await db.execute(data_stmt)
+    rows = result.all()
+    return rows, total
+
+
 async def create_enrolment(
     db: AsyncSession,
     session_id: str,

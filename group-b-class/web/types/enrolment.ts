@@ -41,3 +41,29 @@ export interface EnrolmentDecisionResult {
   session_enrolment_count: number;
   session_waitlist_count: number;
 }
+
+/** GET /v1/me/enrolments — vue agrégée mentor. */
+export interface MentorEnrolmentListItem {
+  id: string;
+  session_id: string;
+  class_id: string;
+  class_title: string;
+  session_starts_at: string;
+  session_status: string;
+  location_city: string | null;
+  location_country: string | null;
+  user_id: string;
+  status: EnrolmentStatus;
+  waitlist_position: number | null;
+  enrolled_at: string;
+  decision_at: string | null;
+  decision_reason: string | null;
+}
+
+export interface MentorEnrolmentListResponse {
+  items: MentorEnrolmentListItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  has_more: boolean;
+}
