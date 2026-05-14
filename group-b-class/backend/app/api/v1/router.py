@@ -7,7 +7,7 @@ MIGRATION HINT (post-hackathon) :
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
-    health,
+    health, enrolment,
     mira_class,
     mira_class_modules,
     mira_class_session,
@@ -28,7 +28,7 @@ router.include_router(skill.router, prefix="/skills", tags=["skills"])
 router.include_router(mira_class_modules.router, prefix="/classes", tags=["modules"])
 router.include_router(modules_quiz.router, prefix="/modules", tags=["modules-quiz"])
 router.include_router(quizzes.router, prefix="/quizzes", tags=["quizzes"])
-
+router.include_router(enrolment.router, prefix="/enrolments", tags=["enrolments"])
 # Ajouter ici les autres routes au fur et à mesure :
 # router.include_router(mentor.router,     prefix="/mentors", tags=["mentors"])
 # ...
