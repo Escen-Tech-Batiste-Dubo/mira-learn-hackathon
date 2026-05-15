@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { ArrowLeft, Loader2, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
@@ -105,7 +105,23 @@ function statusLabel(status: EnrolmentStatus): string {
 }
 
 export default function ClassEnrolmentsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[var(--primary)]" aria-hidden />
+        </div>
+      }
+    >
+      <ClassEnrolmentsPageInner />
+    </Suspense>
+  );
+}
+
+function ClassEnrolmentsPageInner() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const sessionFromUrl = searchParams.get("session");
   const classId = typeof params.id === "string" ? params.id : params.id?.[0] ?? "";
 
   const [classTitle, setClassTitle] = useState<string>("");
@@ -142,7 +158,13 @@ export default function ClassEnrolmentsPage() {
         setClassTitle(cls.title);
         setSessions(Array.isArray(sess) ? sess : []);
         if (Array.isArray(sess) && sess.length > 0) {
-          setSessionId((prev) => (prev && sess.some((s) => s.id === prev) ? prev : sess[0].id));
+          const preferred =
+            sessionFromUrl && sess.some((s) => s.id === sessionFromUrl) ? sessionFromUrl : null;
+          setSessionId((prev) => {
+            if (preferred) return preferred;
+            if (prev && sess.some((s) => s.id === prev)) return prev;
+            return sess[0].id;
+          });
         }
       } catch (e) {
         if (cancelled) return;
@@ -157,7 +179,7 @@ export default function ClassEnrolmentsPage() {
     return () => {
       cancelled = true;
     };
-  }, [classId]);
+  }, [classId, sessionFromUrl]);
 
   const fetchList = useCallback(async () => {
     if (!sessionId) {

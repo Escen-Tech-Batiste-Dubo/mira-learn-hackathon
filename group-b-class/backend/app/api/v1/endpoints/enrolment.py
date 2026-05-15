@@ -17,6 +17,8 @@ from app.schemas.enrolment import (
     EnrolmentListResponse,
     EnrolmentRead,
     EnrolmentStatus,
+    MentorEnrolmentListItem,
+    MentorEnrolmentListResponse,
 )
 from app.services.enrolment_service import (
     cancel_enrolment,
@@ -24,10 +26,58 @@ from app.services.enrolment_service import (
     decide_enrolment,
     get_enrolment,
     get_enrolment_for_mentor,
+    list_enrolments_for_mentor_aggregate,
     list_enrolments_for_session,
 )
 
 router = APIRouter()
+
+
+@router.get("/me/enrolments", summary="Lister toutes les candidatures (vue mentor agrégée)")
+async def list_my_enrolments_aggregate(
+    status: EnrolmentStatus | None = Query(default=None, alias="status"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    user: AuthenticatedUser = Depends(require_role("mentor")),
+) -> dict:
+    offset = (page - 1) * page_size
+    rows, total = await list_enrolments_for_mentor_aggregate(
+        db,
+        mentor_user_id=user.user_id,
+        status=status,
+        limit=page_size,
+        offset=offset,
+    )
+    items: list[MentorEnrolmentListItem] = []
+    for enrolment, session, cls in rows:
+        items.append(
+            MentorEnrolmentListItem(
+                id=enrolment.id,
+                session_id=enrolment.session_id,
+                class_id=cls.id,
+                class_title=cls.title,
+                session_starts_at=session.starts_at,
+                session_status=session.status,
+                location_city=session.location_city,
+                location_country=session.location_country,
+                user_id=enrolment.user_id,
+                status=cast(EnrolmentStatus, enrolment.status),
+                waitlist_position=enrolment.waitlist_position,
+                enrolled_at=enrolment.enrolled_at,
+                decision_at=enrolment.decision_at,
+                decision_reason=enrolment.decision_reason,
+            )
+        )
+    return success_response(
+        data=MentorEnrolmentListResponse(
+            items=items,
+            total=total,
+            page=page,
+            page_size=page_size,
+            has_more=offset + len(items) < total,
+        ).model_dump(mode="json"),
+    )
 
 
 @router.get("/sessions/{session_id}/enrolments", summary="Lister les candidatures d'une session")
